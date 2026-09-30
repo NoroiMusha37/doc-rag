@@ -1,4 +1,4 @@
-# PDF Analyzer Backend
+# Doc-RAG Backend
 
 A production-grade Retrieval-Augmented Generation (RAG) backend system designed to parse complex PDFs, generate vector embeddings, and answer queries using the Google Gemini API.
 
@@ -19,7 +19,7 @@ A production-grade Retrieval-Augmented Generation (RAG) backend system designed 
 
 ## Folder Structure
 ```text
-pdf-analyzer/
+doc-rag/
 ├── app/
 │   ├── main.py                 # FastAPI application entry point
 │   ├── config.py               # Configuration (Pydantic BaseSettings)
