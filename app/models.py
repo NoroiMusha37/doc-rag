@@ -53,7 +53,7 @@ class DocumentChunk(Base):
     text: Mapped[str]
     embedding: Mapped[list[float]] = mapped_column(Vector(768))
     document_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("documents.id"), ondelete="CASCADE"
+        ForeignKey("documents.id", ondelete="CASCADE")
     )
     document: Mapped["Document"] = relationship(
         "Document", back_populates="chunks"
