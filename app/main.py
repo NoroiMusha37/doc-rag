@@ -1,11 +1,22 @@
-import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
 from app import routes
 from app.logger import log
+from app.parser import DocumentParser
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    doc_parser = DocumentParser()
+
+    yield {
+        "doc_parser": doc_parser,
+    }
+
+
+app = FastAPI(lifespan=lifespan)
 log.info("Starting the application...")
 
 app.include_router(routes.router)
