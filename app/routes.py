@@ -29,6 +29,26 @@ async def get_document(document_id: uuid.UUID):
     # return document info
 
 
+@router.get(
+    "/",
+    response_model=list[DocumentResponse],
+    status_code=status.HTTP_200_OK
+)
+async def get_documents():
+    ...
+    # fetch and return all the documents
+
+
+@router.delete(
+    "/{document_id}",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_document(document_id: uuid.UUID):
+    ...
+    # delete document
+
+
 @router.post(
     "/search",
     response_model=SearchResponse,
