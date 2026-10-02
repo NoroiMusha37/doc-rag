@@ -4,6 +4,12 @@ from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict
 
 
+class ParsedChunk(BaseModel):
+    page_number: int
+    chunk_index: int
+    text: str
+
+
 class DocumentResponse(BaseModel):
     id: uuid.UUID
     filename: str
