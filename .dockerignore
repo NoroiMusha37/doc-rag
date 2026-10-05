@@ -1,0 +1,11 @@
+.venv/
+.git/
+.gitignore
+.idea/
+.agents/
+__pycache__/
+*.pyc
+.env
+*.egg-info/
+tests/
+README.md
