@@ -2,7 +2,7 @@
 
 A retrieval-augmented question answering service over your own documents. It parses complex PDFs (tables, figures, formulas, slides), indexes them in Postgres with pgvector, and answers questions with citations to the source pages. Built to support writing a bachelor paper in financial mathematics, using only free models and services.
 
-**Status:** planning done, implementation not started. The roadmap below tracks progress; details are in [docs/plan.md](docs/plan.md).
+**Status:** in progress. The roadmap below tracks what works so far; details are in [docs/plan.md](docs/plan.md).
 
 ## How it works
 
@@ -18,21 +18,19 @@ The answering step has two interchangeable implementations over the same retriev
 
 ## Stack
 
-| Concern | Choice |
-|---|---|
-| API | FastAPI |
-| Parser | Docling, local on GPU |
-| Embedder | `BAAI/bge-m3`, local, 1024-dim, multilingual |
-| Reranker | `BAAI/bge-reranker-v2-m3`, local |
-| Store | Postgres 17 + pgvector (HNSW) + `tsvector` |
-| LLM | Gemini API free tier; Ollama as an alternative |
-| Orchestration | Hand-written pipeline and LangGraph |
-| Interfaces | REST API, MCP server, Streamlit UI |
-| Tooling | Docker Compose, uv, Alembic, ruff, pytest |
+| Concern       | Choice                                         |
+|---------------|------------------------------------------------|
+| API           | FastAPI                                        |
+| Parser        | Docling, local on GPU                          |
+| Embedder      | `BAAI/bge-m3`, local, 1024-dim, multilingual   |
+| Reranker      | `BAAI/bge-reranker-v2-m3`, local               |
+| Store         | Postgres 17 + pgvector (HNSW) + `tsvector`     |
+| LLM           | Gemini API free tier; Ollama as an alternative |
+| Orchestration | Hand-written pipeline and LangGraph            |
+| Interfaces    | REST API, MCP server, Streamlit UI             |
+| Tooling       | Docker Compose, uv, Alembic, ruff, pytest      |
 
 ## Quickstart
-
-Available once phase 1 lands.
 
 Prerequisites:
 
@@ -41,35 +39,36 @@ Prerequisites:
 - A Gemini API key from [Google AI Studio](https://aistudio.google.com/)
 
 ```
-cp .env.example .env      # set GEMINI_API_KEY
-docker compose up --build
+cp .env.example .env      # set GEMINI_API_KEY and the Postgres password
+docker compose up --build -d
+docker compose exec api alembic upgrade head
 ```
 
-| Service | URL |
-|---|---|
-| API docs | http://localhost:8000/docs |
-| MCP (Streamable HTTP) | http://localhost:8000/mcp |
-| Web UI | http://localhost:8501 |
+| Service               | URL                        |
+|-----------------------|----------------------------|
+| API docs              | http://localhost:8000/docs |
+| MCP (Streamable HTTP) | http://localhost:8000/mcp  |
+| Web UI                | http://localhost:8501      |
 
 The first start downloads about 5 GB of models into a Docker volume.
 
 ## API
 
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/health` | Liveness, DB and GPU status |
-| POST | `/documents` | Upload a file and start ingestion |
-| GET | `/documents` | List documents with ingestion status |
-| GET | `/documents/{id}` | One document's status and metadata |
-| DELETE | `/documents/{id}` | Remove a document and its chunks |
-| POST | `/search` | Retrieve ranked chunks for a query |
-| POST | `/chat` | Answer a question with citations (`mode`: `simple` or `graph`) |
+| Method | Path              | Purpose                                                        |
+|--------|-------------------|----------------------------------------------------------------|
+| GET    | `/health`         | Liveness, DB and GPU status                                    |
+| POST   | `/documents`      | Upload a file and start ingestion                              |
+| GET    | `/documents`      | List documents with ingestion status                           |
+| GET    | `/documents/{id}` | One document's status and metadata                             |
+| DELETE | `/documents/{id}` | Remove a document and its chunks                               |
+| POST   | `/search`         | Retrieve ranked chunks for a query                             |
+| POST   | `/chat`           | Answer a question with citations (`mode`: `simple` or `graph`) |
 
 MCP tools: `search_documents`, `ask_documents`, `list_documents`.
 
 ## Roadmap
 
-- [ ] 1. Skeleton: Compose, config, database, migrations, health check
+- [x] 1. Skeleton: Compose, config, database, migrations, health check
 - [ ] 2. Ingestion: upload, Docling parsing, chunking, embedding
 - [ ] 3. Retrieval: hybrid search, RRF fusion, reranking
 - [ ] 4. Answering: hand-written pipeline with Gemini and citations

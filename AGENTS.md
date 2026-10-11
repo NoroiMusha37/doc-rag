@@ -88,17 +88,22 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Child DOX Index
 
-No child AGENTS.md files exist yet. The root doc owns everything currently in the repo:
+Child docs:
+
+- `src/doc_rag/AGENTS.md` - the FastAPI application: import style, settings, session and app conventions
+- `migrations/AGENTS.md` - Alembic setup and how revisions are generated and applied
+
+Owned by the root doc:
 
 - `README.md` - user-facing overview, quickstart, API table and roadmap checklist
 - `CLAUDE.md` - agent quick reference: commands, module map, Facts list
 - `docs/plan.md` - roadmap, fixed decisions, target layout, data model
 - `.claude/skills/build-phase/` - skill that implements one roadmap phase, verifies, runs the DOX pass and commits
-- `pyproject.toml` - project metadata and dependencies (managed with uv)
+- `pyproject.toml`, `uv.lock` - dependencies and tool config; dependencies and index sources are added with `uv add`, not by hand
+- `Dockerfile`, `compose.yaml`, `.env.example` - API image (GPU, runs uvicorn, has its own HEALTHCHECK) and the `db` + `api` services; all credentials come from `.env`
+- `tests/` - pytest suite; `conftest.py` sets placeholder env vars so settings load without a `.env`
 
 Create a child AGENTS.md and list it here when its folder is first created:
 
-- `src/doc_rag/` and, inside it, `ingestion/`, `retrieval/`, `llm/`, `chat/`
-- `migrations/`
 - `ui/`
 - `eval/`

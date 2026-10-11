@@ -22,12 +22,14 @@ State which phase you are building and which files you expect to create or chang
 ## 2. Implement only that phase
 
 - Follow the target layout in `docs/plan.md`; do not invent new top-level modules.
-- `__init__.py` files stay empty. Imports are full-path: `from doc_rag.retrieval.service import ...`.
+- `__init__.py` files stay empty. Imports are full-path from the repo root: `from src.doc_rag.retrieval.service import ...`.
 - DTOs are pydantic models in the module's own `schemas.py`.
-- The LLM is called only through `doc_rag.llm.base.LLMClient`.
+- The LLM is called only through `src.doc_rag.llm.base.LLMClient`.
+- Settings fields are UPPER_CASE with no hardcoded URLs or credentials; keep modules simple (no factories or lazy singletons without a concrete need).
+- Migrations are generated with `alembic revision --autogenerate`, never hand-written.
 - GPU models (Docling, embedder, reranker) are loaded once at startup and reused, never per request.
 - Retrieval logic lives in `retrieval/`; `chat/pipeline.py` and `chat/graph.py` call it and do not reimplement it.
-- Add dependencies with `uv add`; never edit the lockfile by hand.
+- Add dependencies and index sources with `uv add`; never edit `pyproject.toml` dependencies or the lockfile by hand.
 - Check current library APIs (Docling, google-genai, mcp, LangGraph) in their docs or installed source before using them; do not rely on remembered signatures.
 - Decisions in `docs/plan.md` (models, schema, embedding dimension, stack) are fixed. If one looks wrong or blocks the phase, stop and ask the user.
 - Stay inside the phase. Note ideas for later phases in the final report instead of building them.

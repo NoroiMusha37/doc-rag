@@ -8,20 +8,20 @@ Ingest complex PDFs (tables, figures, formulas, slides) and answer questions abo
 
 ## Decisions
 
-| Concern | Choice | Why |
-|---|---|---|
-| API | FastAPI | Fixed by the user. |
-| Parser | Docling (local, GPU) | Layout-aware; tables -> Markdown, formulas -> LaTeX, figure image export, OCR. Also reads PPTX/DOCX/XLSX/HTML. |
-| Embedder | `BAAI/bge-m3` (local, 1024-dim) | Free, ~1 GB VRAM in fp16, multilingual (English and Ukrainian). |
-| Reranker | `BAAI/bge-reranker-v2-m3` (local) | Largest quality gain after hybrid search; multilingual. |
-| Vector store | Postgres 17 + pgvector (HNSW, cosine) | Fixed by the user. The same table holds a `tsvector` column. |
-| Retrieval | Dense + Postgres full-text, fused with RRF, then rerank | Dense-only retrieval misses exact terms and symbols. |
-| LLM | Gemini API free tier via `google-genai`, behind `LLMClient`; Ollama as a second implementation | App subscriptions give no API tokens; the API free tier is separate, rate-limited, and inputs may be used for training. Model id is config. |
-| Figure captions | Gemini vision at ingest, optional flag, off by default | Makes charts retrievable by text without spending quota by default. |
-| DB access | SQLAlchemy 2 async + asyncpg + `pgvector` + Alembic | |
-| MCP | Official `mcp` SDK (FastMCP), Streamable HTTP mounted in the FastAPI app | |
-| UI | Streamlit, separate container, talks to the API only | |
-| Tooling | uv, ruff, pytest | |
+| Concern         | Choice                                                                                         | Why                                                                                                                                         |
+|-----------------|------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| API             | FastAPI                                                                                        | Fixed by the user.                                                                                                                          |
+| Parser          | Docling (local, GPU)                                                                           | Layout-aware; tables -> Markdown, formulas -> LaTeX, figure image export, OCR. Also reads PPTX/DOCX/XLSX/HTML.                              |
+| Embedder        | `BAAI/bge-m3` (local, 1024-dim)                                                                | Free, ~1 GB VRAM in fp16, multilingual (English and Ukrainian).                                                                             |
+| Reranker        | `BAAI/bge-reranker-v2-m3` (local)                                                              | Largest quality gain after hybrid search; multilingual.                                                                                     |
+| Vector store    | Postgres 17 + pgvector (HNSW, cosine)                                                          | Fixed by the user. The same table holds a `tsvector` column.                                                                                |
+| Retrieval       | Dense + Postgres full-text, fused with RRF, then rerank                                        | Dense-only retrieval misses exact terms and symbols.                                                                                        |
+| LLM             | Gemini API free tier via `google-genai`, behind `LLMClient`; Ollama as a second implementation | App subscriptions give no API tokens; the API free tier is separate, rate-limited, and inputs may be used for training. Model id is config. |
+| Figure captions | Gemini vision at ingest, optional flag, off by default                                         | Makes charts retrievable by text without spending quota by default.                                                                         |
+| DB access       | SQLAlchemy 2 async + asyncpg + `pgvector` + Alembic                                            |                                                                                                                                             |
+| MCP             | Official `mcp` SDK (FastMCP), Streamable HTTP mounted in the FastAPI app                       |                                                                                                                                             |
+| UI              | Streamlit, separate container, talks to the API only                                           |                                                                                                                                             |
+| Tooling         | uv, ruff, pytest                                                                               |                                                                                                                                             |
 
 ### Two chat orchestrators, one retrieval layer
 
@@ -34,7 +34,7 @@ Ingest complex PDFs (tables, figures, formulas, slides) and answer questions abo
 
 ```
 src/doc_rag/
-  main.py                 app factory; mounts routers and MCP
+  main.py                 module-level app; mounts routers and MCP
   config.py               pydantic-settings
   db/                     session.py, models.py
   documents/              router.py, schemas.py, service.py
@@ -60,9 +60,9 @@ Dockerfile, compose.yaml, .env.example
 
 Tick a phase when its commit lands.
 
-- [ ] **1. Skeleton.** Compose with `pgvector/pgvector:pg17` and the app (NVIDIA device reservation, Hugging Face model cache as a volume); config; DB session; Alembic baseline with `CREATE EXTENSION vector`; `GET /health`.
+- [x] **1. Skeleton.** Compose with `pgvector/pgvector:pg17` and the app (NVIDIA device reservation, Hugging Face model cache as a volume); config; DB session; Alembic configured (no revisions yet); `GET /health`.
   *Done when:* `docker compose up` gives a healthy API and `torch.cuda.is_available()` is true inside the container.
-- [ ] **2. Ingestion.** `POST /documents` stores the file and a `pending` row; a background task runs Docling (table structure, formula enrichment, picture images) -> chunker (Docling HybridChunker with the bge-m3 tokenizer; tables kept whole with heading context) -> embed in batches -> insert. `GET /documents`, `GET /documents/{id}`, `DELETE /documents/{id}`.
+- [ ] **2. Ingestion.** SQLAlchemy models and the first autogenerated migration (with `CREATE EXTENSION vector` added to it). `POST /documents` stores the file and a `pending` row; a background task runs Docling (table structure, formula enrichment, picture images) -> chunker (Docling HybridChunker with the bge-m3 tokenizer; tables kept whole with heading context) -> embed in batches -> insert. `GET /documents`, `GET /documents/{id}`, `DELETE /documents/{id}`.
   *Done when:* a PDF with tables reaches `ready` and its chunks show intact tables and LaTeX.
 - [ ] **3. Retrieval.** Dense kNN, lexical `websearch_to_tsquery`, RRF fusion, rerank top-30 -> top-6. `POST /search` returns chunks with scores and pages.
   *Done when:* searching an exact table header and a paraphrased concept both return the right page.
@@ -78,10 +78,10 @@ Tick a phase when its commit lands.
 
 ## Known risks
 
-- Image size: CUDA torch + Docling is ~8 GB; first start downloads ~5 GB of models into the cache volume.
+- Image size: the API image is ~11 GB with CUDA torch alone and grows with Docling; first start downloads ~5 GB of models into the cache volume.
 - VRAM: Docling models plus bge-m3 and the reranker fit in 8 GB, but ingesting and querying at the same time may not. Ingestion runs one document at a time.
 - Gemini free-tier limits change; retry/backoff and the Ollama client exist for that.
-- Docling with CUDA wheels on Python 3.13 is verified in phase 1; fall back to 3.12 in the image if it fails.
+- torch with CUDA on Python 3.13 is verified; Docling on 3.13 is verified in phase 2, with 3.12 in the image as the fallback.
 
 ## Verification
 
