@@ -48,6 +48,12 @@ add short description of acquired knowledge here in bulleted list:
 - In `compose.yaml` write `healthcheck.test` as a single string, not a list
 - torch 2.11 cu128 wheels work on Python 3.13 in `python:3.13-slim` with GPU passthrough (Docker Desktop + NVIDIA runtime); no CUDA base image is needed. The API image is about 11 GB
 - Postgres only applies `POSTGRES_USER`/`POSTGRES_PASSWORD` when the `pgdata` volume is first created; changing them later needs a new volume
+- Feature folders follow `router.py` (thin) + `service.py` (class, raises `HTTPException`) + `schemas.py`
+- Dependencies follow the user's usual pattern (as in `D:\Projects\url-shortener\app\dependencies.py`): `get_db` in `db/session.py` yields the session; `dependencies.py` has `get_db_repo(session=Depends(get_db)) -> DBRepository`, `get_documents_service(db=Depends(get_db_repo))`, and `get_pipeline(request)` for the lifespan object. No dependencies in routers. Tests override them, because the test client does not run the lifespan
+- Services are built per request from `DBRepository`; do not make them singletons or put them in the lifespan (tried once and reverted: a shared service cannot hold a session, which forced it to open its own sessions). Only the GPU pipeline lives in the lifespan. `DBRepository.open()` is for background/startup code only
+- Push back before implementing when the user proposes something that harms the design or correctness: say what breaks and why, offer the alternative, and only then proceed with what they decide
+- Uploads: PDF only, deduplicated by SHA-256, `MAX_UPLOAD_MB` limit; files live under `STORAGE_DIR/uploads` and `STORAGE_DIR/assets` (paths from `upload_path()` / `assets_dir()` in `ingestion/pipeline.py`)
+- Tests never need a GPU, network or database: fake the repository, models and service (see `tests/test_pipeline.py`, `tests/test_documents_*.py`). Real behaviour is checked against the running compose stack with curl and psql
 - Database access only through `DBRepository` (`src/doc_rag/db/repository.py`) with its `documents` and `chunks` sub-repositories, written in SQLAlchemy 2.0 statement style. Repositories do not commit or catch errors; callers do
 - Logs use f-strings (`logger.info(f"...")`) and `logging.getLogger(__name__)`; logging is configured in `src/doc_rag/logger.py`
 - Components holding models or state are classes (`DocumentParser`, `DocumentChunker`, `Embedder`, `IngestionPipeline`); keep custom exceptions rare (`ParsingError` is the only one)
@@ -63,6 +69,6 @@ add short description of acquired knowledge here in bulleted list:
 - GPU models (Docling, embedder, reranker) are loaded once at startup and reused; never instantiate per request
 - Gemini app subscriptions (Pro/Plus) give no API tokens; the API free tier is separate and uses an AI Studio key
 - Default branch is `main`
-- Commit messages are `[verb] the rest of the text` (e.g. `[add] models`); stop at each checkpoint to commit before continuing
+- Commit messages are `[verb] the rest of the text` (e.g. `[add] models`). Never commit on your own: at each checkpoint stop with the work uncommitted so the user can review the diff, and commit only after they approve
 - Phases of `docs/plan.md` are implemented with the `build-phase` skill (`.claude/skills/build-phase/SKILL.md`), which runs on Sonnet
 

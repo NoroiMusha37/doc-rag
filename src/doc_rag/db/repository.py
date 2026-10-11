@@ -1,13 +1,15 @@
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from typing import Any
 
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.doc_rag.db.models import Chunk, Document
+from src.doc_rag.db.models import Chunk, Document, DocumentStatus
 from src.doc_rag.db.session import SessionLocal
+
+UNFINISHED_STATUSES = (DocumentStatus.PENDING, DocumentStatus.PARSING, DocumentStatus.EMBEDDING)
 
 
 class DocumentsRepository:
@@ -18,12 +20,36 @@ class DocumentsRepository:
         statement = select(Document).where(Document.id == document_id)
         return await self._session.scalar(statement)
 
+    async def get_by_sha256(self, sha256: str) -> Document | None:
+        statement = select(Document).where(Document.sha256 == sha256)
+        return await self._session.scalar(statement)
+
+    async def list_all(self) -> Sequence[Document]:
+        statement = select(Document).order_by(Document.created_at.desc())
+        return (await self._session.scalars(statement)).all()
+
+    async def create(self, **values: Any) -> Document:
+        statement = insert(Document).values(**values).returning(Document)
+        return await self._session.scalar(statement)
+
     async def update(self, document_id: uuid.UUID, **values: Any) -> Document | None:
-        """Set the given columns; return the updated document, or None if it does not exist."""
         statement = (
             update(Document).where(Document.id == document_id).values(**values).returning(Document)
         )
         return await self._session.scalar(statement)
+
+    async def delete(self, document_id: uuid.UUID) -> bool:
+        statement = delete(Document).where(Document.id == document_id).returning(Document.id)
+        return await self._session.scalar(statement) is not None
+
+    async def fail_unfinished(self, error: str) -> int:
+        """Mark documents left mid-ingestion as failed; return how many there were."""
+        statement = (
+            update(Document)
+            .where(Document.status.in_(UNFINISHED_STATUSES))
+            .values(status=DocumentStatus.FAILED, error=error)
+        )
+        return (await self._session.execute(statement)).rowcount
 
 
 class ChunksRepository:
@@ -31,10 +57,6 @@ class ChunksRepository:
         self._session = session
 
     async def replace(self, document_id: uuid.UUID, rows: list[dict[str, Any]]) -> None:
-        """Swap all chunks of a document, so re-ingesting never leaves duplicates.
-
-        Each row holds the chunk's column values except `document_id`.
-        """
         await self._session.execute(delete(Chunk).where(Chunk.document_id == document_id))
         if rows:
             await self._session.execute(
@@ -58,9 +80,6 @@ class DBRepository:
     @classmethod
     @asynccontextmanager
     async def open(cls) -> AsyncIterator["DBRepository"]:
-        """Open a repository on its own session, for code that runs outside a request
-        (background ingestion). Request handlers build one from the `get_session` dependency.
-        """
         async with SessionLocal() as session:
             yield cls(session)
 

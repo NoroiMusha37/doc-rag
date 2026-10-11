@@ -82,7 +82,8 @@ When the user requests a durable behavior change, record it here or in the relev
 - The core pipeline (ingestion, embedding, retrieval) is hand-written; LangGraph is confined to `src/doc_rag/chat/graph.py`
 - Documents are English-first; Ukrainian must keep working, so models stay multilingual
 - Commit messages are `[verb] the rest of the text`, e.g. `[init] the project`, `[add] models`
-- Stop at every checkpoint (end of a phase or of a self-contained unit) to commit, then wait for the user before continuing
+- Never commit before the user has reviewed the code: at every checkpoint (end of a phase or of a self-contained unit) stop with the changes uncommitted, summarize them, and commit only after the user explicitly approves. Do not continue to the next unit until then
+- Push back before implementing when a user proposal would harm the design, correctness or robustness: state the concrete downside and the alternative first, then follow the user's decision
 - Do not push unless asked
 - `docs/plan.md` holds the roadmap and fixed decisions; change a decision only after agreeing it with the user
 
@@ -90,7 +91,7 @@ When the user requests a durable behavior change, record it here or in the relev
 
 Child docs:
 
-- `src/doc_rag/AGENTS.md` - the FastAPI application: import style, settings, session and app conventions
+- `src/doc_rag/AGENTS.md` - the FastAPI application: import style, settings, repository, logging and app conventions; indexes `ingestion/` and `documents/`
 - `migrations/AGENTS.md` - Alembic setup and how revisions are generated and applied
 
 Owned by the root doc:

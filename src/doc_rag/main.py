@@ -8,7 +8,8 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.doc_rag.db.session import engine, get_session
+from src.doc_rag.db.session import engine, get_db
+from src.doc_rag.documents.router import router as documents_router
 from src.doc_rag.embedding.embedder import Embedder
 from src.doc_rag.ingestion.chunker import DocumentChunker
 from src.doc_rag.ingestion.parser import DocumentParser
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncIterator[dict[str, IngestionPipeline]]:
     logger.info("Loading ingestion models")
     pipeline = IngestionPipeline(DocumentParser(), DocumentChunker(), Embedder())
+    await pipeline.fail_interrupted()
     logger.info("Application is ready")
 
     yield {
@@ -34,16 +36,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[dict[str, IngestionPipeline]]:
 
 
 app = FastAPI(title="doc-rag", lifespan=lifespan)
+app.include_router(documents_router)
 
 
 @app.get("/health", response_model=HealthResponse)
-async def health(session: AsyncSession = Depends(get_session)) -> HealthResponse:
+async def health(session: AsyncSession = Depends(get_db)) -> HealthResponse:
     try:
         await session.execute(text("SELECT 1"))
         database = True
     except (SQLAlchemyError, OSError) as e:
         logger.warning(f"Health check could not reach the database: {e}")
         database = False
+
     gpu = torch.cuda.is_available()
     return HealthResponse(
         status="ok" if database else "degraded",

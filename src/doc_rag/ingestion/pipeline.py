@@ -3,6 +3,8 @@ import logging
 import uuid
 from pathlib import Path
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from src.doc_rag.config import settings
 from src.doc_rag.db.models import DocumentStatus
 from src.doc_rag.db.repository import DBRepository
@@ -40,6 +42,22 @@ class IngestionPipeline:
             except Exception as exc:
                 logger.exception(f"Ingestion of document {document_id} failed")
                 await self._mark_failed(document_id, exc)
+
+    @staticmethod
+    async def fail_interrupted() -> None:
+        """At startup: documents left mid-ingestion by a restart would otherwise stay stuck."""
+        try:
+            async with DBRepository.open() as db:
+                count = await db.documents.fail_unfinished(
+                    "Ingestion was interrupted by a restart; upload the file again to retry"
+                )
+                await db.commit()
+        except SQLAlchemyError as exc:
+            # The app must still start when the database is down or not migrated yet.
+            logger.warning(f"Could not check for interrupted documents: {exc}")
+            return
+        if count:
+            logger.warning(f"Marked {count} interrupted document(s) as failed")
 
     async def _run(self, document_id: uuid.UUID) -> None:
         filename = await self._set_status(document_id, DocumentStatus.PARSING, error=None)

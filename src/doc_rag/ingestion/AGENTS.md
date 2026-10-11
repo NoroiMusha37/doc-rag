@@ -18,6 +18,7 @@ The embedder lives in `src/doc_rag/embedding/embedder.py` (`Embedder`).
 
 - `DocumentParser`, `DocumentChunker` and `Embedder` are built once, in the lifespan in `main.py`, and passed to `IngestionPipeline`. The lifespan yields `{"pipeline": pipeline}`; handlers read `request.state.pipeline`.
 - `IngestionPipeline.ingest(document_id)` expects the `documents` row and the uploaded file to exist already; it never creates the row. It never raises: failures set `status = failed` and `error` on the row and are logged.
+- `IngestionPipeline.fail_interrupted()` runs once in the lifespan: documents left in `pending`/`parsing`/`embedding` by a restart are marked `failed` (re-uploading the file retries them). It only logs a warning when the database is unreachable or not migrated, so the app still starts.
 - Status flow: `pending` -> `parsing` -> `embedding` -> `ready`, or `failed`. One document is processed at a time (an `asyncio.Lock`), because parsing and embedding share the GPU.
 - All database access goes through `DBRepository` (`db/repository.py`); background code opens it with `DBRepository.open()`. No sessions or SQL in this folder.
 - Chunks and the `ready` status are written in one transaction; re-ingesting replaces a document's chunks.

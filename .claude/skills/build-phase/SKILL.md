@@ -49,8 +49,9 @@ If a check fails, fix the cause. If you cannot, report the failure with its outp
 - Add anything newly learned about libraries, models or services to the Facts list in `CLAUDE.md`.
 - Tick the phase in `docs/plan.md` and in the README roadmap.
 
-## 5. Commit and stop
+## 5. Stop for review, commit only after approval
 
-- Show `git status` and a one-paragraph summary of what was built and how it was verified.
-- Commit with a subject of the form `[verb] the rest of the text`, lowercase verb in brackets, for example `[add] ingestion pipeline` or `[fix] chunk page ranges`. Large phases may be split into several such commits at self-contained points (for example models and migration first).
-- Do not push. Do not start the next phase; wait for the user.
+- Do not commit. Leave the changes in the working tree, show `git status`, and give a one-paragraph summary of what was built and how it was verified, plus the commit message you propose.
+- Stop and wait. The user reviews the diff first; commit only after they explicitly approve, and apply any changes they ask for before committing.
+- The commit subject has the form `[verb] the rest of the text`, lowercase verb in brackets, for example `[add] ingestion pipeline` or `[fix] chunk page ranges`. Large phases are split into several such commits at self-contained points (for example models and migration first), each with its own review stop.
+- Do not push. Do not start the next unit or phase until the current one is approved and committed.

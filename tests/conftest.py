@@ -8,7 +8,7 @@ from httpx import ASGITransport, AsyncClient
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
 
-from src.doc_rag.db.session import get_session  # noqa: E402
+from src.doc_rag.db.session import get_db  # noqa: E402
 from src.doc_rag.main import app  # noqa: E402
 
 
@@ -23,7 +23,7 @@ def override_session() -> Iterator[Callable[[object], None]]:
     """Replace the database session dependency with a stand-in for one test."""
 
     def _override(session: object) -> None:
-        app.dependency_overrides[get_session] = lambda: session
+        app.dependency_overrides[get_db] = lambda: session
 
     yield _override
     app.dependency_overrides.clear()

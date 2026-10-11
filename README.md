@@ -69,7 +69,7 @@ MCP tools: `search_documents`, `ask_documents`, `list_documents`.
 ## Roadmap
 
 - [x] 1. Skeleton: Compose, config, database, migrations, health check
-- [ ] 2. Ingestion: upload, Docling parsing, chunking, embedding
+- [x] 2. Ingestion: upload, Docling parsing, chunking, embedding
 - [ ] 3. Retrieval: hybrid search, RRF fusion, reranking
 - [ ] 4. Answering: hand-written pipeline with Gemini and citations
 - [ ] 5. Streamlit UI and MCP server
