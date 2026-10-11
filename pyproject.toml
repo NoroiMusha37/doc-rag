@@ -1,0 +1,7 @@
+[project]
+name = "doc-rag"
+version = "0.1.0"
+description = "RAG service that answers questions about complex PDFs with page citations"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
