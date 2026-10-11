@@ -1,38 +1,58 @@
-from httpx import ASGITransport, AsyncClient
+from collections.abc import Callable
 
-from src.doc_rag.db.session import get_session
-from src.doc_rag.main import app
+import pytest
+from httpx import AsyncClient
+from sqlalchemy.exc import OperationalError
 
 
-class _HealthySession:
+class FakeSession:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error = error
+
     async def execute(self, statement: object) -> None:
-        return None
+        if self.error is not None:
+            raise self.error
 
 
-class _BrokenSession:
-    async def execute(self, statement: object) -> None:
-        raise OSError("connection refused")
+@pytest.mark.parametrize(
+    ("error", "status", "database"),
+    [
+        pytest.param(None, "ok", True, id="database-up"),
+        pytest.param(OSError("connection refused"), "degraded", False, id="connection-refused"),
+        pytest.param(
+            OperationalError("SELECT 1", {}, Exception("server closed the connection")),
+            "degraded",
+            False,
+            id="sqlalchemy-error",
+        ),
+    ],
+)
+async def test_health_reports_database_state(
+    client: AsyncClient,
+    override_session: Callable[[object], None],
+    error: Exception | None,
+    status: str,
+    database: bool,
+) -> None:
+    override_session(FakeSession(error))
 
+    response = await client.get("/health")
 
-async def _get_health(session: object) -> dict:
-    app.dependency_overrides[get_session] = lambda: session
-    try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.get("/health")
-    finally:
-        app.dependency_overrides.clear()
     assert response.status_code == 200
-    return response.json()
+    body = response.json()
+    assert body["status"] == status
+    assert body["database"] is database
 
 
-async def test_health_ok_when_database_responds() -> None:
-    body = await _get_health(_HealthySession())
-    assert body["status"] == "ok"
-    assert body["database"] is True
-    assert isinstance(body["gpu"], bool)
+async def test_health_reports_gpu(
+    client: AsyncClient,
+    override_session: Callable[[object], None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("torch.cuda.is_available", lambda: False)
+    override_session(FakeSession())
 
+    body = (await client.get("/health")).json()
 
-async def test_health_degraded_when_database_is_down() -> None:
-    body = await _get_health(_BrokenSession())
-    assert body["status"] == "degraded"
-    assert body["database"] is False
+    assert body["gpu"] is False
+    assert body["gpu_name"] is None
