@@ -92,6 +92,11 @@ class DocumentsService:
         document = await self._db.documents.update(
             existing.id, status=DocumentStatus.PENDING, error=None
         )
+        if document is None:
+            # Deleted by another request between the lookup and this update.
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "The document was just deleted; upload the file again"
+            )
         await self._db.commit()
         logger.info(f"Upload matches failed document {existing.id}; retrying ingestion")
         return document, True

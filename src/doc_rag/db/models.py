@@ -17,6 +17,9 @@ from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 EMBEDDING_DIM = 1024
+# Stems English words; other languages are still matched by their exact lowercased words.
+# Searches must use the same configuration as the generated `Chunk.tsv` column.
+TEXT_SEARCH_CONFIG = "english"
 
 
 class DocumentStatus(StrEnum):
@@ -80,7 +83,7 @@ class Chunk(Base):
     asset_path: Mapped[str | None] = mapped_column(Text)
     embedding: Mapped[list[float]] = mapped_column(Vector(EMBEDDING_DIM))
     tsv: Mapped[str] = mapped_column(
-        TSVECTOR, Computed("to_tsvector('english', text)", persisted=True)
+        TSVECTOR, Computed(f"to_tsvector('{TEXT_SEARCH_CONFIG}', text)", persisted=True)
     )
 
     document: Mapped[Document] = relationship(back_populates="chunks")

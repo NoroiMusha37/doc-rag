@@ -83,22 +83,26 @@ class IngestionPipeline:
 
     def _parse(self, document_id: uuid.UUID, filename: str) -> ParsedDocument:
         document = self._parser.parse(upload_path(document_id, filename))
-        chunks = self._chunker.chunk(document, assets_dir(document_id))
-        return ParsedDocument(page_count=len(document.pages), chunks=chunks)
+        return ParsedDocument(
+            page_count=len(document.pages),
+            chunks=self._chunker.chunk(document, assets_dir(document_id)),
+        )
 
     @staticmethod
     async def _store(
         document_id: uuid.UUID, parsed: ParsedDocument, vectors: list[list[float]]
     ) -> bool:
         """Save the chunks and mark the document ready in one transaction."""
-        rows = [
-            {**chunk.model_dump(), "embedding": vector}
-            for chunk, vector in zip(parsed.chunks, vectors, strict=True)
-        ]
         async with DBRepository.open() as db:
             if await db.documents.update(document_id, status=DocumentStatus.READY) is None:
                 return False
-            await db.chunks.replace(document_id, rows)
+            await db.chunks.replace(
+                document_id,
+                [
+                    {**chunk.model_dump(), "embedding": vector}
+                    for chunk, vector in zip(parsed.chunks, vectors, strict=True)
+                ],
+            )
             await db.commit()
         return True
 

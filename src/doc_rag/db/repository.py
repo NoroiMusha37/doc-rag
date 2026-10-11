@@ -3,10 +3,12 @@ from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from typing import Any
 
-from sqlalchemy import delete, insert, select, update
+from sqlalchemy import Select, cast, delete, func, insert, select, update
+from sqlalchemy.dialects.postgresql import REGCONFIG
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer, joinedload
 
-from src.doc_rag.db.models import Chunk, Document, DocumentStatus
+from src.doc_rag.db.models import TEXT_SEARCH_CONFIG, Chunk, Document, DocumentStatus
 from src.doc_rag.db.session import SessionLocal
 
 UNFINISHED_STATUSES = (DocumentStatus.PENDING, DocumentStatus.PARSING, DocumentStatus.EMBEDDING)
@@ -17,39 +19,46 @@ class DocumentsRepository:
         self._session = session
 
     async def get(self, document_id: uuid.UUID) -> Document | None:
-        statement = select(Document).where(Document.id == document_id)
-        return await self._session.scalar(statement)
+        return await self._session.scalar(select(Document).where(Document.id == document_id))
 
     async def get_by_sha256(self, sha256: str) -> Document | None:
-        statement = select(Document).where(Document.sha256 == sha256)
-        return await self._session.scalar(statement)
+        return await self._session.scalar(select(Document).where(Document.sha256 == sha256))
 
     async def list_all(self) -> Sequence[Document]:
-        statement = select(Document).order_by(Document.created_at.desc())
-        return (await self._session.scalars(statement)).all()
+        return (
+            await self._session.scalars(select(Document).order_by(Document.created_at.desc()))
+        ).all()
 
     async def create(self, **values: Any) -> Document:
-        statement = insert(Document).values(**values).returning(Document)
-        return await self._session.scalar(statement)
+        return (
+            await self._session.scalars(insert(Document).values(**values).returning(Document))
+        ).one()
 
     async def update(self, document_id: uuid.UUID, **values: Any) -> Document | None:
-        statement = (
+        return await self._session.scalar(
             update(Document).where(Document.id == document_id).values(**values).returning(Document)
         )
-        return await self._session.scalar(statement)
 
     async def delete(self, document_id: uuid.UUID) -> bool:
-        statement = delete(Document).where(Document.id == document_id).returning(Document.id)
-        return await self._session.scalar(statement) is not None
+        return (
+            await self._session.scalar(
+                delete(Document).where(Document.id == document_id).returning(Document.id)
+            )
+            is not None
+        )
 
     async def fail_unfinished(self, error: str) -> int:
         """Mark documents left mid-ingestion as failed; return how many there were."""
-        statement = (
-            update(Document)
-            .where(Document.status.in_(UNFINISHED_STATUSES))
-            .values(status=DocumentStatus.FAILED, error=error)
+        return len(
+            (
+                await self._session.scalars(
+                    update(Document)
+                    .where(Document.status.in_(UNFINISHED_STATUSES))
+                    .values(status=DocumentStatus.FAILED, error=error)
+                    .returning(Document.id)
+                )
+            ).all()
         )
-        return (await self._session.execute(statement)).rowcount
 
 
 class ChunksRepository:
@@ -62,6 +71,50 @@ class ChunksRepository:
             await self._session.execute(
                 insert(Chunk), [{**row, "document_id": document_id} for row in rows]
             )
+
+    async def search_dense(
+        self, embedding: list[float], limit: int, document_ids: Sequence[uuid.UUID] | None = None
+    ) -> Sequence[Chunk]:
+        # The HNSW index is scanned before the document filter is applied; iterative scan
+        # keeps scanning until `limit` rows pass the filter, so filtering never starves it.
+        await self._session.execute(
+            select(func.set_config("hnsw.iterative_scan", "strict_order", True))
+        )
+        return (
+            await self._session.scalars(
+                self._search_statement(document_ids)
+                .order_by(Chunk.embedding.cosine_distance(embedding))
+                .limit(limit)
+            )
+        ).all()
+
+    async def search_lexical(
+        self, query: str, limit: int, document_ids: Sequence[uuid.UUID] | None = None
+    ) -> Sequence[Chunk]:
+        """The `limit` chunks matching the words of `query`, best first.
+
+        `query` uses web-search syntax: words are ANDed, "quoted phrases" and `-excluded`
+        words are supported. A query made only of stop words matches nothing.
+        """
+        tsquery = func.websearch_to_tsquery(cast(TEXT_SEARCH_CONFIG, REGCONFIG), query)
+        return (
+            await self._session.scalars(
+                self._search_statement(document_ids)
+                .where(Chunk.tsv.op("@@")(tsquery))
+                .order_by(func.ts_rank_cd(Chunk.tsv, tsquery).desc())
+                .limit(limit)
+            )
+        ).all()
+
+    @staticmethod
+    def _search_statement(document_ids: Sequence[uuid.UUID] | None) -> Select[Chunk]:
+        """Chunks with their document loaded; the large vector columns are never read."""
+        statement = select(Chunk).options(
+            joinedload(Chunk.document), defer(Chunk.embedding), defer(Chunk.tsv)
+        )
+        if document_ids is not None:
+            statement = statement.where(Chunk.document_id.in_(document_ids))
+        return statement
 
 
 class DBRepository:

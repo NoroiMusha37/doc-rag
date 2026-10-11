@@ -91,7 +91,7 @@ When the user requests a durable behavior change, record it here or in the relev
 
 Child docs:
 
-- `src/doc_rag/AGENTS.md` - the FastAPI application: import style, settings, repository, logging and app conventions; indexes `ingestion/` and `documents/`
+- `src/doc_rag/AGENTS.md` - the FastAPI application: import style, settings, repository, logging and app conventions; indexes `ingestion/`, `documents/` and `retrieval/`
 - `migrations/AGENTS.md` - Alembic setup and how revisions are generated and applied
 
 Owned by the root doc:

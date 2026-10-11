@@ -11,10 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.doc_rag.db.session import engine, get_db
 from src.doc_rag.documents.router import router as documents_router
 from src.doc_rag.embedding.embedder import Embedder
+from src.doc_rag.embedding.reranker import Reranker
 from src.doc_rag.ingestion.chunker import DocumentChunker
 from src.doc_rag.ingestion.parser import DocumentParser
 from src.doc_rag.ingestion.pipeline import IngestionPipeline
 from src.doc_rag.logger import setup_logging
+from src.doc_rag.retrieval.router import router as search_router
 from src.doc_rag.schemas import HealthResponse
 
 setup_logging()
@@ -22,14 +24,19 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[dict[str, IngestionPipeline]]:
-    logger.info("Loading ingestion models")
-    pipeline = IngestionPipeline(DocumentParser(), DocumentChunker(), Embedder())
+async def lifespan(app: FastAPI) -> AsyncIterator[dict[str, object]]:
+    logger.info("Loading models")
+    # One embedder serves both ingestion and search, so the model sits in VRAM once.
+    embedder = Embedder()
+    pipeline = IngestionPipeline(DocumentParser(), DocumentChunker(), embedder)
+    reranker = Reranker()
     await pipeline.fail_interrupted()
     logger.info("Application is ready")
 
     yield {
         "pipeline": pipeline,
+        "embedder": embedder,
+        "reranker": reranker,
     }
 
     await engine.dispose()
@@ -37,6 +44,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[dict[str, IngestionPipeline]]:
 
 app = FastAPI(title="doc-rag", lifespan=lifespan)
 app.include_router(documents_router)
+app.include_router(search_router)
 
 
 @app.get("/health", response_model=HealthResponse)

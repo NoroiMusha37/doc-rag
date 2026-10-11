@@ -1,4 +1,5 @@
 import logging
+import threading
 import time
 
 import numpy as np
@@ -16,6 +17,8 @@ class Embedder:
 
     def __init__(self) -> None:
         self._device = "cuda" if torch.cuda.is_available() else "cpu"
+        # Ingestion and searches run in different threads; one model call at a time.
+        self._lock = threading.Lock()
         started = time.perf_counter()
         self._model = SentenceTransformer(
             settings.EMBEDDING_MODEL,
@@ -23,9 +26,9 @@ class Embedder:
             # Half precision halves VRAM use; CPU inference needs full precision.
             model_kwargs={"torch_dtype": torch.float16} if self._device == "cuda" else None,
         )
-        elapsed = time.perf_counter() - started
         logger.info(
-            f"Embedder {settings.EMBEDDING_MODEL} ready in {elapsed:.1f}s on {self._device}"
+            f"Embedder {settings.EMBEDDING_MODEL} ready in "
+            f"{time.perf_counter() - started:.1f}s on {self._device}"
         )
 
     def embed(self, texts: list[str]) -> list[list[float]]:
@@ -49,13 +52,14 @@ class Embedder:
         batch_size = settings.EMBEDDING_BATCH_SIZE
         while True:
             try:
-                return self._model.encode(
-                    texts,
-                    batch_size=batch_size,
-                    normalize_embeddings=True,
-                    convert_to_numpy=True,
-                    show_progress_bar=False,
-                )
+                with self._lock:
+                    return self._model.encode(
+                        texts,
+                        batch_size=batch_size,
+                        normalize_embeddings=True,
+                        convert_to_numpy=True,
+                        show_progress_bar=False,
+                    )
             except torch.OutOfMemoryError:
                 torch.cuda.empty_cache()
                 if batch_size == 1:

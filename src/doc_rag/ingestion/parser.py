@@ -63,6 +63,8 @@ class DocumentParser:
         elif result.status is not ConversionStatus.SUCCESS:
             raise ParsingError(f"Could not convert {path.name} ({result.status.value}): {errors}")
 
-        pages = len(result.document.pages)
-        logger.info(f"Parsed {path.name}: {pages} pages in {time.perf_counter() - started:.1f}s")
+        logger.info(
+            f"Parsed {path.name}: {len(result.document.pages)} pages "
+            f"in {time.perf_counter() - started:.1f}s"
+        )
         return result.document

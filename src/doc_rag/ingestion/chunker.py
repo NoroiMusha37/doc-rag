@@ -32,11 +32,11 @@ class DocumentChunker:
 
     def __init__(self) -> None:
         # Token counts must come from the embedder's own tokenizer to respect its limit.
-        tokenizer = HuggingFaceTokenizer.from_pretrained(
-            model_name=settings.EMBEDDING_MODEL, max_tokens=settings.CHUNK_MAX_TOKENS
-        )
         self._chunker = HybridChunker(
-            tokenizer=tokenizer, serializer_provider=MarkdownTableSerializerProvider()
+            tokenizer=HuggingFaceTokenizer.from_pretrained(
+                model_name=settings.EMBEDDING_MODEL, max_tokens=settings.CHUNK_MAX_TOKENS
+            ),
+            serializer_provider=MarkdownTableSerializerProvider(),
         )
 
     def chunk(self, document: DoclingDocument, assets_dir: Path) -> list[ParsedChunk]:
