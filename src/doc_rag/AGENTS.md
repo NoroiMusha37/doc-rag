@@ -10,6 +10,7 @@ The FastAPI application: settings, database access, and (as phases land) ingesti
 - `config.py` - `Settings` and the module-level `settings` instance
 - `schemas.py` - DTOs for routes defined in `main.py`
 - `db/session.py` - module-level `engine`, `SessionLocal`, and the `get_session` dependency
+- `db/models.py` - `Base`, `Document`, `Chunk`, and the `DocumentStatus` / `ChunkKind` string enums
 
 ## Local Contracts
 
@@ -18,6 +19,8 @@ The FastAPI application: settings, database access, and (as phases land) ingesti
 - `Settings` fields are UPPER_CASE and match their environment variable names. Required values (`DATABASE_URL`, `GEMINI_API_KEY`) have no default, so importing `config.py` fails when one is missing or empty.
 - `app` is defined at module level in `main.py`; there is no `create_app` factory.
 - `engine` is created once at import and disposed in the lifespan; request handlers get sessions only through `get_session`.
+- Primary keys are UUIDs generated in Python (`default=uuid.uuid4`), so an id is known before the row is inserted. Enum-like columns (`status`, `kind`) are plain `String` columns holding `StrEnum` values, not native Postgres enums.
+- `Chunk.embedding` is `Vector(EMBEDDING_DIM)` (1024); `Chunk.tsv` is a generated column and is never written by the application.
 - `GET /health` always returns 200; `status` is `ok` or `degraded` depending on the database check.
 
 ## Work Guidance

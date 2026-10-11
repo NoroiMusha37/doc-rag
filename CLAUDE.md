@@ -41,8 +41,9 @@ add short description of acquired knowledge here in bulleted list:
 - Models are local except the LLM; call the LLM only through `src.doc_rag.llm.base.LLMClient`
 - `Settings` fields are UPPER_CASE; required ones (`DATABASE_URL`, `GEMINI_API_KEY`) have no default so the app fails at import when they are missing. Never hardcode URLs or credentials
 - `main.py` defines `app` at module level - no `create_app` factory. Keep modules simple (module-level engine/sessionmaker) unless there is a concrete need for more
-- Do not hand-write migrations; generate them with `alembic revision --autogenerate` once models exist. The first one must add `CREATE EXTENSION IF NOT EXISTS vector` manually
-- Add dependencies and index sources with `uv add` (e.g. `uv add torch --index pytorch-cu128=https://download.pytorch.org/whl/cu128`), not by editing `pyproject.toml`
+- Do not hand-write migrations; generate them with `alembic revision --autogenerate` (new files are auto-formatted by ruff hooks). Only `CREATE EXTENSION` is added by hand, in the first revision
+- Ids of `Document` and `Chunk` are UUIDs (`uuid.uuid4` in Python); `status`/`kind` are `String` columns with `StrEnum` values
+- Add dependencies with `uv add`, not by editing `pyproject.toml`. `uv add <pkg> --index NAME=URL` on an index that already exists in `pyproject.toml` re-registers it as a normal (non-explicit) index and breaks resolution (`certifi` is then looked up there), so it cannot be used to pin more packages to the cu128 index
 - The API container runs `uvicorn src.doc_rag.main:app` directly and has a Dockerfile `HEALTHCHECK` polling `/health`; migrations are applied explicitly, not on container start
 - In `compose.yaml` write `healthcheck.test` as a single string, not a list
 - torch 2.11 cu128 wheels work on Python 3.13 in `python:3.13-slim` with GPU passthrough (Docker Desktop + NVIDIA runtime); no CUDA base image is needed. The API image is about 11 GB
