@@ -28,15 +28,17 @@ class Settings(BaseSettings):
     # Reciprocal rank fusion constant; 60 is the value from the original paper.
     RRF_K: int = 60
 
-    # Must be a model with a free tier: https://ai.google.dev/gemini-api/docs/pricing
-    GEMINI_MODEL: str = "gemini-3.8-flash"
+    # Comma-separated, best first. When a model has no quota left or is overloaded, the
+    # next one answers. All must have a free tier: https://ai.google.dev/gemini-api/docs/pricing
+    # Free daily limits seen on 2026-10-12: 20, 20 and 500 requests.
+    GEMINI_MODELS: str = "gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash-lite"
     # Low values keep answers close to the sources instead of creative.
     LLM_TEMPERATURE: float = 0.2
     # Tries per LLM call, the first included; rate limits and server errors are retried.
     LLM_MAX_ATTEMPTS: int = 5
-    # Longest wait for the answer to start, retries included. A healthy call starts in
-    # about 5 seconds; the rest is room for retries when Gemini is overloaded.
-    LLM_START_TIMEOUT_SECONDS: int = 45
+    # Longest wait for one model to start answering, retries included; after that the
+    # next model is tried. Healthy calls started in 4-8 seconds when this was measured.
+    LLM_START_TIMEOUT_SECONDS: int = 20
     # Longest total time for one answer. Gemini itself stops generating at this point.
     LLM_ANSWER_TIMEOUT_SECONDS: int = 180
     # Search results scoring below this are not shown to the LLM. If none remain, the
