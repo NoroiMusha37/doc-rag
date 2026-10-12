@@ -34,6 +34,7 @@ The FastAPI application: settings, database access, and (as phases land) ingesti
 - Routers are registered in `main.py` with `app.include_router(...)`. Each feature folder has `router.py` (thin), `service.py` (logic, may raise `HTTPException`) and `schemas.py`; in `chat/` the logic file is `pipeline.py`, as named in `docs/plan.md`.
 - Streaming routes use FastAPI's own SSE support: `response_class=EventSourceResponse` and `yield ServerSentEvent(event=..., data=...)` from the route (`fastapi.sse`). A streaming route cannot change its status code after the first event, so failures during the stream are sent as an `error` event.
 - The language model is used only through `LLMClient` from `llm/base.py`; no module outside `llm/` imports `google.genai`.
+- The MCP endpoint `/mcp` is added to the app's routes in `main.py` and its session manager runs inside the lifespan; MCP tools reach the lifespan objects through their call's `request.state` and use `DBRepository.open()` for the database. See `mcp_server/AGENTS.md`.
 - Objects built at startup are passed to handlers through the lifespan state (`yield {...}` -> `request.state`), not assigned to `app.state`. Startup work in the lifespan is plain synchronous code, no `asyncio.to_thread`.
 - Logging: `logging.getLogger(__name__)` in each module, f-strings in log calls. `LOG_LEVEL` applies to `src.doc_rag` loggers; third-party libraries log at WARNING and above; uvicorn's lines go through the same handler.
 - `GET /health` always returns 200; `status` is `ok` or `degraded` depending on the database check.
@@ -60,3 +61,4 @@ The FastAPI application: settings, database access, and (as phases land) ingesti
 - `retrieval/AGENTS.md` - hybrid search flow, `/search`, keyword-search behaviour, scoring
 - `llm/AGENTS.md` - `LLMClient` interface, Gemini client, retries, error contract, prompts
 - `chat/AGENTS.md` - answering flow, `/chat` SSE events, declining, citations
+- `mcp_server/AGENTS.md` - MCP tools, how they are mounted, how they reach the lifespan objects

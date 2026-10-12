@@ -10,6 +10,7 @@ dependencies = [
     "docling>=2.137.0",
     "fastapi>=0.143.0",
     "google-genai>=2.29.0",
+    "mcp>=2.3.0",
     "pgvector>=0.5.1",
     "pydantic-settings>=2.15.0",
     "python-multipart>=0.0.32",
