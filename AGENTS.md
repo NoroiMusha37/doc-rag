@@ -85,6 +85,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - Never commit before the user has reviewed the code: at every checkpoint (end of a phase or of a self-contained unit) stop with the changes uncommitted, summarize them, and commit only after the user explicitly approves. Do not continue to the next unit until then
 - Push back before implementing when a user proposal would harm the design, correctness or robustness: state the concrete downside and the alternative first, then follow the user's decision
 - Do not push unless asked
+- All work in this project runs on Sonnet: `.claude/settings.json` sets it as the session model and both skills pin it. Do not change the model unless the user asks
 - `docs/plan.md` holds the roadmap and fixed decisions; change a decision only after agreeing it with the user
 
 ## Child DOX Index
@@ -93,18 +94,20 @@ Child docs:
 
 - `src/doc_rag/AGENTS.md` - the FastAPI application: import style, settings, repository, logging and app conventions; indexes `ingestion/`, `documents/`, `retrieval/`, `llm/`, `chat/` and `mcp_server/`
 - `migrations/AGENTS.md` - Alembic setup and how revisions are generated and applied
+- `ui/AGENTS.md` - the Streamlit page and its API client; a separate container that talks to the API only
 
 Owned by the root doc:
 
 - `README.md` - user-facing overview, quickstart, API table and roadmap checklist
 - `CLAUDE.md` - agent quick reference: commands, module map, Facts list
 - `docs/plan.md` - roadmap, fixed decisions, target layout, data model
-- `.claude/skills/build-phase/` - skill that implements one roadmap phase, verifies, runs the DOX pass and commits
-- `pyproject.toml`, `uv.lock` - dependencies and tool config; dependencies and index sources are added with `uv add`, not by hand
-- `Dockerfile`, `compose.yaml`, `.env.example` - API image (GPU, runs uvicorn, has its own HEALTHCHECK) and the `db` + `api` services; all credentials come from `.env`
+- `.claude/skills/build-phase/` - skill that implements one roadmap phase, verifies, runs the DOX pass and stops for review
+- `.claude/skills/change/` - skill for any other change (fix, refactor, review feedback), with the same verify, DOX and review steps
+- `.claude/settings.json` - project settings; sets Sonnet as the model for every session here
+- `pyproject.toml`, `uv.lock` - dependencies and tool config; dependencies and index sources are added with `uv add`, not by hand. The API's are the project dependencies; the web page's are the `ui` group
+- `Dockerfile`, `compose.yaml`, `.env.example` - API image (GPU, runs uvicorn, has its own HEALTHCHECK) and the `db`, `api` and `ui` services; all credentials come from `.env`
 - `tests/` - pytest suite; `conftest.py` sets placeholder env vars so settings load without a `.env`
 
 Create a child AGENTS.md and list it here when its folder is first created:
 
-- `ui/`
 - `eval/`

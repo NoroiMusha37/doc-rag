@@ -11,10 +11,10 @@ FastAPI + Postgres/pgvector + Docker; local Docling, bge-m3 and bge-reranker on 
 ## Commands
 Run everything from the repo root:
 - `uv sync` - install dependencies; `uv add <pkg>` to add one
-- `docker compose up --build -d` - start Postgres and the API (needs `.env`, see `.env.example`)
+- `docker compose up --build -d` - start Postgres, the API and the web page (needs `.env`, see `.env.example`)
 - `uv run alembic revision --autogenerate -m "<msg>"` - generate a migration from the models
 - `uv run alembic upgrade head` (or `docker compose exec api alembic upgrade head`) - apply migrations
-- `uv run pytest` - tests
+- `uv run pytest` - tests; `uv run --group ui pytest` also runs the web page tests (skipped without Streamlit)
 - `uv run ruff check` / `uv run ruff format` - lint and format
 
 ## Architecture
@@ -28,7 +28,7 @@ Target layout under `src/doc_rag/` (built phase by phase):
 - `llm/` - `LLMClient` protocol with Gemini and Ollama implementations
 - `chat/` - `pipeline.py` (hand-written) and `graph.py` (LangGraph)
 - `mcp_server/` - MCP tools mounted in the FastAPI app
-- `ui/app.py` (repo root) - Streamlit client of the API
+- `ui/` (repo root) - Streamlit page (`app.py`) and its API client (`client.py`), in their own container
 
 ## Facts
 Every time you get new information about this project, or new way of interaction with 
@@ -86,11 +86,14 @@ add short description of acquired knowledge here in bulleted list:
 - `/mcp` is mounted by extending `app.routes` with `mcp.streamable_http_app(stateless_http=True, json_response=True).routes` and running `mcp.session_manager.run()` inside the lifespan (once per instance); never mount it at `/` (catch-all shadows later routes). The SDK enables DNS-rebinding protection for localhost only (421 for other hosts)
 - Register the server in Claude Code with `claude mcp add --transport http doc-rag http://localhost:8000/mcp`; tools appear after `/mcp` reconnects or a restart
 - Neither the REST API nor `/mcp` is authenticated, and compose publishes port 8000 (and Postgres 5432) on all interfaces; keep the machine off untrusted networks or bind the ports to `127.0.0.1`
+- The web page (`ui/`) is a client of the REST API only: no `src.doc_rag` imports, plain dicts instead of DTOs, all HTTP in `ui/client.py` (`ApiClient`, `ApiError`). Its dependencies are the `ui` group (`uv add --group ui <pkg>`), installed in `ui/Dockerfile` with `uv sync --frozen --only-group ui`, so the image has no torch. Details in `ui/AGENTS.md`
+- Figure images are served by `app.mount("/assets", StaticFiles(directory=STORAGE_DIR/assets, check_dir=False))`; a chunk's `asset_path` (`assets/<document id>/<n>.png`) is the URL path. The page fetches them server-side, because the browser cannot reach `http://api:8000`
+- Streamlit 1.65: `st.write_stream(generator)` streams and returns the text; `st.fragment(run_every=seconds)(function)()` makes a part refresh on its own, and `st.rerun()` inside a fragment reruns the whole page; `st.form(clear_on_submit=True)` is what empties a `file_uploader`; `st.cache_resource` is shared by all sessions. Tests use `streamlit.testing.v1.AppTest.from_file(path)` (path is relative to the test file, hence `../ui/app.py`) and replace `ui.client.ApiClient` with a fake, clearing `st.cache_resource` per test
 - Embedding dimension is 1024 (bge-m3); changing the embedder requires a migration and re-embedding all chunks
 - `chat/pipeline.py` and `chat/graph.py` share `retrieval/`; do not fork retrieval logic into either
 - GPU models (Docling, embedder, reranker) are loaded once at startup and reused; never instantiate per request
 - Gemini app subscriptions (Pro/Plus) give no API tokens; the API free tier is separate and uses an AI Studio key
 - Default branch is `main`
 - Commit messages are `[verb] the rest of the text` (e.g. `[add] models`). Never commit on your own: at each checkpoint stop with the work uncommitted so the user can review the diff, and commit only after they approve
-- Phases of `docs/plan.md` are implemented with the `build-phase` skill (`.claude/skills/build-phase/SKILL.md`), which runs on Sonnet
+- Phases of `docs/plan.md` are implemented with the `build-phase` skill, any other change with the `change` skill (`.claude/skills/*/SKILL.md`); both pin `model: sonnet`. A skill's model only applies while the skill runs, so `.claude/settings.json` (`"model": "sonnet"`) is what makes every session in this project start on Sonnet
 
