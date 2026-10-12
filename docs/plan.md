@@ -66,7 +66,7 @@ Tick a phase when its commit lands.
   *Done when:* a PDF with tables reaches `ready` and its chunks show intact tables and LaTeX.
 - [x] **3. Retrieval.** Dense kNN, lexical `websearch_to_tsquery`, RRF fusion, rerank top-30 -> top-6. `POST /search` returns chunks with scores and pages.
   *Done when:* searching an exact table header and a paraphrased concept both return the right page.
-- [ ] **4. Answering (hand-written).** `LLMClient` protocol; Gemini implementation with retry on 429; prompt that requires `[n]` citations and says so when the documents do not contain the answer. `POST /chat` streams over SSE and returns the answer plus cited chunks.
+- [x] **4. Answering (hand-written).** `LLMClient` protocol; Gemini implementation with retry on 429; prompt that requires `[n]` citations and says so when the documents do not contain the answer. `POST /chat` streams over SSE and returns the answer plus cited chunks.
   *Done when:* a question answered by a table gets a correct answer citing that page, and an off-topic question is declined.
 - [ ] **5. UI and MCP.** Streamlit page (upload, document status, chat, expandable sources with page numbers and figure images). MCP tools `search_documents`, `ask_documents`, `list_documents`.
   *Done when:* the whole flow works from the browser, and Claude Code lists and calls the MCP tools.

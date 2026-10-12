@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.doc_rag.chat.router import router as chat_router
 from src.doc_rag.db.session import engine, get_db
 from src.doc_rag.documents.router import router as documents_router
 from src.doc_rag.embedding.embedder import Embedder
@@ -15,6 +16,7 @@ from src.doc_rag.embedding.reranker import Reranker
 from src.doc_rag.ingestion.chunker import DocumentChunker
 from src.doc_rag.ingestion.parser import DocumentParser
 from src.doc_rag.ingestion.pipeline import IngestionPipeline
+from src.doc_rag.llm.gemini import GeminiClient
 from src.doc_rag.logger import setup_logging
 from src.doc_rag.retrieval.router import router as search_router
 from src.doc_rag.schemas import HealthResponse
@@ -30,6 +32,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[dict[str, object]]:
     embedder = Embedder()
     pipeline = IngestionPipeline(DocumentParser(), DocumentChunker(), embedder)
     reranker = Reranker()
+    llm = GeminiClient()
     await pipeline.fail_interrupted()
     logger.info("Application is ready")
 
@@ -37,14 +40,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[dict[str, object]]:
         "pipeline": pipeline,
         "embedder": embedder,
         "reranker": reranker,
+        "llm": llm,
     }
 
+    await llm.close()
     await engine.dispose()
 
 
 app = FastAPI(title="doc-rag", lifespan=lifespan)
 app.include_router(documents_router)
 app.include_router(search_router)
+app.include_router(chat_router)
 
 
 @app.get("/health", response_model=HealthResponse)

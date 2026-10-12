@@ -62,7 +62,7 @@ The first start downloads about 5 GB of models into a Docker volume.
 | GET    | `/documents/{id}` | One document's status and metadata                             |
 | DELETE | `/documents/{id}` | Remove a document and its chunks                               |
 | POST   | `/search`         | Retrieve ranked chunks for a query                             |
-| POST   | `/chat`           | Answer a question with citations (`mode`: `simple` or `graph`) |
+| POST   | `/chat`           | Answer a question with citations, streamed as SSE              |
 
 MCP tools: `search_documents`, `ask_documents`, `list_documents`.
 
@@ -71,7 +71,7 @@ MCP tools: `search_documents`, `ask_documents`, `list_documents`.
 - [x] 1. Skeleton: Compose, config, database, migrations, health check
 - [x] 2. Ingestion: upload, Docling parsing, chunking, embedding
 - [x] 3. Retrieval: hybrid search, RRF fusion, reranking
-- [ ] 4. Answering: hand-written pipeline with Gemini and citations
+- [x] 4. Answering: hand-written pipeline with Gemini and citations
 - [ ] 5. Streamlit UI and MCP server
 - [ ] 6. Evaluation set and script
 - [ ] 7. LangGraph orchestrator
