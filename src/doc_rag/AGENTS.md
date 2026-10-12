@@ -6,7 +6,7 @@ The FastAPI application: settings, database access, and (as phases land) ingesti
 
 ## Ownership
 
-- `main.py` - the `app` object, lifespan (loads the models and the LLM client once and yields `pipeline`, `embedder`, `reranker`, `llm`), and `GET /health`
+- `main.py` - the `app` object, lifespan (loads the models and the LLM client once and yields `pipeline`, `embedder`, `reranker`, `llm`), `GET /health`, and the `/assets` static files
 - `config.py` - `Settings` and the module-level `settings` instance
 - `logger.py` - `setup_logging()`, called once at the top of `main.py`
 - `schemas.py` - DTOs for routes defined in `main.py`
@@ -35,6 +35,7 @@ The FastAPI application: settings, database access, and (as phases land) ingesti
 - Streaming routes use FastAPI's own SSE support: `response_class=EventSourceResponse` and `yield ServerSentEvent(event=..., data=...)` from the route (`fastapi.sse`). A streaming route cannot change its status code after the first event, so failures during the stream are sent as an `error` event.
 - The language model is used only through `LLMClient` from `llm/base.py`; no module outside `llm/` imports `google.genai`.
 - The MCP endpoint `/mcp` is added to the app's routes in `main.py` and its session manager runs inside the lifespan; MCP tools reach the lifespan objects through their call's `request.state` and use `DBRepository.open()` for the database. See `mcp_server/AGENTS.md`.
+- Figure images are served read-only at `/assets/<document id>/<n>.png` by a `StaticFiles` mount over `STORAGE_DIR/assets`, so a result's `asset_path` is also its URL path. The mount uses `check_dir=False` because the folder only appears with the first ingested figure.
 - Objects built at startup are passed to handlers through the lifespan state (`yield {...}` -> `request.state`), not assigned to `app.state`. Startup work in the lifespan is plain synchronous code, no `asyncio.to_thread`.
 - Logging: `logging.getLogger(__name__)` in each module, f-strings in log calls. `LOG_LEVEL` applies to `src.doc_rag` loggers; third-party libraries log at WARNING and above; uvicorn's lines go through the same handler.
 - `GET /health` always returns 200; `status` is `ok` or `degraded` depending on the database check.

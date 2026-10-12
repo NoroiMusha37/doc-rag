@@ -63,6 +63,7 @@ The first start downloads about 5 GB of models into a Docker volume.
 | DELETE | `/documents/{id}` | Remove a document and its chunks                               |
 | POST   | `/search`         | Retrieve ranked chunks for a query                             |
 | POST   | `/chat`           | Answer a question with citations, streamed as SSE              |
+| GET    | `/assets/...`     | Figure images, at the `asset_path` of a search result          |
 
 MCP tools: `search_documents`, `ask_documents`, `list_documents`.
 
@@ -72,7 +73,7 @@ MCP tools: `search_documents`, `ask_documents`, `list_documents`.
 - [x] 2. Ingestion: upload, Docling parsing, chunking, embedding
 - [x] 3. Retrieval: hybrid search, RRF fusion, reranking
 - [x] 4. Answering: hand-written pipeline with Gemini and citations
-- [ ] 5. Streamlit UI and MCP server
+- [x] 5. Streamlit UI and MCP server
 - [ ] 6. Evaluation set and script
 - [ ] 7. LangGraph orchestrator
 - [ ] 8. Later: figure captioning, chat history, Ollama, more file types

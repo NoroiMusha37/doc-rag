@@ -1,14 +1,17 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import torch
 from fastapi import Depends, FastAPI
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.doc_rag.chat.router import router as chat_router
+from src.doc_rag.config import settings
 from src.doc_rag.db.session import engine, get_db
 from src.doc_rag.documents.router import router as documents_router
 from src.doc_rag.embedding.embedder import Embedder
@@ -54,6 +57,9 @@ app = FastAPI(title="doc-rag", lifespan=lifespan)
 app.include_router(documents_router)
 app.include_router(search_router)
 app.include_router(chat_router)
+# Figure images, at the same path a search result carries in `asset_path`. The folder
+# appears with the first ingested figure, so it may not exist yet.
+app.mount("/assets", StaticFiles(directory=Path(settings.STORAGE_DIR) / "assets", check_dir=False))
 app.routes.extend(mcp.streamable_http_app(stateless_http=True, json_response=True).routes)
 
 

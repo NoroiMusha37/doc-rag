@@ -44,7 +44,7 @@ src/doc_rag/
   llm/                    base.py, gemini.py, ollama.py, prompts.py
   chat/                   router.py, schemas.py, pipeline.py, graph.py
   mcp_server/             server.py   (not named `mcp`, to avoid shadowing the SDK)
-ui/app.py
+ui/                      app.py, client.py, Dockerfile
 migrations/
 eval/                     questions.jsonl, run_eval.py
 tests/
@@ -68,7 +68,7 @@ Tick a phase when its commit lands.
   *Done when:* searching an exact table header and a paraphrased concept both return the right page.
 - [x] **4. Answering (hand-written).** `LLMClient` protocol; Gemini implementation with retry on 429; prompt that requires `[n]` citations and says so when the documents do not contain the answer. `POST /chat` streams over SSE and returns the answer plus cited chunks.
   *Done when:* a question answered by a table gets a correct answer citing that page, and an off-topic question is declined.
-- [ ] **5. UI and MCP.** Streamlit page (upload, document status, chat, expandable sources with page numbers and figure images). MCP tools `search_documents`, `ask_documents`, `list_documents`.
+- [x] **5. UI and MCP.** Streamlit page (upload, document status, chat, expandable sources with page numbers and figure images). MCP tools `search_documents`, `ask_documents`, `list_documents`.
   *Done when:* the whole flow works from the browser, and Claude Code lists and calls the MCP tools.
 - [ ] **6. Evaluation.** 20-30 hand-written questions with expected document and page; `eval/run_eval.py` reports hit@k and MRR and dumps answers for manual review.
   *Done when:* the script runs end to end and its numbers are recorded as the baseline.
