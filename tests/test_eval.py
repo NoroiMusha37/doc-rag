@@ -6,6 +6,7 @@ import pytest
 
 from eval.run_eval import (
     DEFAULT_MIN_SCORE,
+    QUESTIONS_PATH,
     Answer,
     Question,
     Retrieval,
@@ -15,9 +16,11 @@ from eval.run_eval import (
     is_relevant,
     load_questions,
     missing_documents,
+    parse_args,
     parse_events,
     retrieval_metrics,
     search,
+    write_answers,
 )
 from src.doc_rag.config import settings
 
@@ -45,6 +48,19 @@ def test_the_question_file_is_valid_and_covers_every_kind() -> None:
     assert {q.kind for q in questions} == {"text", "table", "figure", "formula", "none"}
     assert {q.language for q in questions} == {"en", "uk"}
     assert any(not q.answerable for q in questions)
+
+
+def test_the_loosely_worded_question_file_is_valid_and_has_its_own_ids() -> None:
+    vague = load_questions(Path(__file__).parent.parent / "eval" / "questions_vague.jsonl")
+
+    assert 5 <= len(vague) <= 15
+    assert all(question.answerable for question in vague)
+    assert not {q.id for q in vague} & {q.id for q in load_questions()}
+
+
+def test_the_question_file_can_be_chosen_on_the_command_line() -> None:
+    assert parse_args([]).questions == QUESTIONS_PATH
+    assert parse_args(["--questions", "other.jsonl"]).questions == Path("other.jsonl")
 
 
 def test_the_default_threshold_matches_the_servers_setting() -> None:
@@ -214,6 +230,58 @@ def test_ask_collects_sources_citations_and_the_answer() -> None:
 
     assert (answer.text, answer.citations, answer.error) == ("It is 28.4 [1].", [1], None)
     assert answer.correct
+
+
+def test_ask_sends_the_mode_and_collects_the_graph_steps() -> None:
+    source = {"number": 1, **_result()}
+    body = _chat_body(
+        ("step", {"event": "step", "message": "searching again for: attention heads"}),
+        ("sources", {"sources": [source]}),
+        ("token", {"text": "28.4 [1]."}),
+        ("done", {"answer": "28.4 [1].", "citations": [1]}),
+    )
+    seen: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(request.content))
+        return httpx.Response(200, text=body)
+
+    answer = ask(_api(handler), _question(), "graph")
+
+    assert seen == [{"question": "What?", "mode": "graph"}]
+    assert answer.steps == ["searching again for: attention heads"]
+    assert answer.source_rank == 1
+
+
+def test_ask_uses_simple_mode_by_default() -> None:
+    seen: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(request.content))
+        return httpx.Response(200, text="")
+
+    ask(_api(handler), _question())
+
+    assert seen[0]["mode"] == "simple"
+
+
+def test_the_source_rank_is_the_position_of_the_first_relevant_source() -> None:
+    sources = [{"number": 1, **_result(start=9, end=9)}, {"number": 2, **_result()}]
+
+    assert Answer(_question(), "", [], sources, None, 1.0).source_rank == 2
+    assert Answer(_question(), "", [], sources[:1], None, 1.0).source_rank is None
+
+
+def test_the_answers_file_names_the_mode_and_the_rewritten_searches(tmp_path: Path) -> None:
+    answer = Answer(_question(), "28.4 [1].", [1], [{"number": 1, **_result()}], None, 1.0)
+    answer.steps.append("searching again for: attention heads")
+
+    path = write_answers([answer], tmp_path, "graph")
+
+    text = path.read_text(encoding="utf-8")
+    assert path.name.startswith("answers-graph-")
+    assert "(graph mode)" in text
+    assert "Searched again:** searching again for: attention heads" in text
 
 
 def test_ask_reports_an_error_event() -> None:

@@ -14,7 +14,7 @@ import json
 import sys
 import time
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
@@ -83,6 +83,13 @@ class Answer:
     sources: list[dict]
     error: str | None
     seconds: float
+    # What graph mode did before answering (one entry per rewritten search); empty otherwise.
+    steps: list[str] = field(default_factory=list)
+
+    @property
+    def source_rank(self) -> int | None:
+        """Position among the sources of the first relevant one; None if there is none."""
+        return first_hit_rank(self.sources, self.question)
 
     @property
     def cites_expected(self) -> bool:
@@ -188,13 +195,14 @@ def search(http: httpx.Client, question: Question, top_k: int) -> Retrieval:
     )
 
 
-def ask(http: httpx.Client, question: Question) -> Answer:
+def ask(http: httpx.Client, question: Question, mode: str = "simple") -> Answer:
     started = time.perf_counter()
-    response = http.post("/chat", json={"question": question.question})
+    response = http.post("/chat", json={"question": question.question, "mode": mode})
     response.raise_for_status()
+    all_events = parse_events(response.text.splitlines())
     # Later events of the same name replace earlier ones; only `sources` and the last
     # `done` or `error` are needed, so the individual tokens are dropped.
-    events = dict(parse_events(response.text.splitlines()))
+    events = dict(all_events)
     done = events.get("done", {})
     return Answer(
         question=question,
@@ -203,6 +211,7 @@ def ask(http: httpx.Client, question: Question) -> Answer:
         sources=events.get("sources", {}).get("sources", []),
         error=events.get("error", {}).get("message"),
         seconds=time.perf_counter() - started,
+        steps=[data["message"] for name, data in all_events if name == "step"],
     )
 
 
@@ -265,12 +274,12 @@ def print_retrieval_report(retrievals: list[Retrieval], top_k: int, min_score: f
     if not misses:
         print("    none")
     print("\n  Found, but not first (what ranked above the right page):")
-    late = [r for r in answerable if r.rank is not None and r.rank > 1]
-    for r in late:
+    late = [(r, r.rank) for r in answerable if r.rank is not None and r.rank > 1]
+    for r, rank in late:
         above = ", ".join(
-            f"{x['filename']} p.{page_range(x)} ({x['score']:.2f})" for x in r.results[: r.rank - 1]
+            f"{x['filename']} p.{page_range(x)} ({x['score']:.2f})" for x in r.results[: rank - 1]
         )
-        print(f"    {r.question.id}: #{r.rank}, above it: {above}")
+        print(f"    {r.question.id}: #{rank}, above it: {above}")
     if not late:
         print("    none")
 
@@ -284,9 +293,9 @@ def print_retrieval_report(retrievals: list[Retrieval], top_k: int, min_score: f
         print(f"  highest top score of an unanswerable question: {highest:.3f}")
 
 
-def print_answer_report(answers: list[Answer]) -> None:
+def print_answer_report(answers: list[Answer], mode: str = "simple") -> None:
     answerable = [a for a in answers if a.question.answerable]
-    print(f"\nAnswers: {len(answers)} asked")
+    print(f"\nAnswers ({mode} mode): {len(answers)} asked")
     for a in answers:
         if a.error:
             verdict = f"ERROR {a.error}"
@@ -298,25 +307,35 @@ def print_answer_report(answers: list[Answer]) -> None:
             )
         else:
             verdict = "declined" if not a.citations else f"ANSWERED, citing {a.citations}"
-        print(f"    {a.question.id:<24} {a.seconds:5.1f}s  {verdict}")
+        rewrites = f"  [rewrote {len(a.steps)}x]" if a.steps else ""
+        print(f"    {a.question.id:<24} {a.seconds:5.1f}s  {verdict}{rewrites}")
     if answerable:
         print(
             f"  answerable correct: {sum(a.correct for a in answerable)}/{len(answerable)} "
             f"(facts present: {sum(a.has_keywords for a in answerable)}, "
             f"cites the expected page: {sum(a.cites_expected for a in answerable)})"
         )
+    if answerable:
+        ranks = [a.source_rank for a in answerable]
+        print(
+            f"  relevant page among the sources: {sum(r is not None for r in ranks)}/{len(ranks)}, "
+            f"first source: {sum(r == 1 for r in ranks)}/{len(ranks)}"
+        )
     unanswerable = [a for a in answers if not a.question.answerable]
     if unanswerable:
         print(
             f"  unanswerable declined: {sum(a.correct for a in unanswerable)}/{len(unanswerable)}"
         )
+    rewrites = sum(len(a.steps) for a in answers)
+    print(f"  questions rewritten: {sum(bool(a.steps) for a in answers)} ({rewrites} rewrites)")
+    print(f"  answer time: median {sorted(a.seconds for a in answers)[len(answers) // 2]:.1f}s")
 
 
-def write_answers(answers: list[Answer], directory: Path) -> Path:
+def write_answers(answers: list[Answer], directory: Path, mode: str = "simple") -> Path:
     """A Markdown file to read the answers yourself; the checks above only look for words."""
     directory.mkdir(parents=True, exist_ok=True)
-    path = directory / f"answers-{datetime.now():%Y%m%d-%H%M%S}.md"
-    lines = ["# Evaluation answers", ""]
+    path = directory / f"answers-{mode}-{datetime.now():%Y%m%d-%H%M%S}.md"
+    lines = [f"# Evaluation answers ({mode} mode)", ""]
     for a in answers:
         q = a.question
         expected = (
@@ -332,6 +351,7 @@ def write_answers(answers: list[Answer], directory: Path) -> Path:
             f"**Expected:** {expected}",
             "",
         ]
+        lines += [f"**Searched again:** {step}" for step in a.steps]
         lines += [f"**Error:** {a.error}" if a.error else f"**Answer:** {a.text}", ""]
         for source in a.sources:
             marks = ("cited " if source["number"] in a.citations else "") + (
@@ -360,6 +380,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--answers", action="store_true", help="also ask /chat (spends Gemini requests)"
     )
+    parser.add_argument(
+        "--mode", choices=("simple", "graph"), default="simple", help="orchestrator for /chat"
+    )
+    parser.add_argument(
+        "--questions", type=Path, default=QUESTIONS_PATH, help="JSON Lines file of questions"
+    )
     parser.add_argument("--ids", help="comma-separated question ids to run")
     parser.add_argument("--out", type=Path, default=RESULTS_DIR, help="folder for the answers file")
     return parser.parse_args(argv)
@@ -368,7 +394,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
     args = parse_args(argv)
-    questions = load_questions()
+    questions = load_questions(args.questions)
     if args.ids:
         wanted = set(args.ids.split(","))
         if unknown := wanted - {q.id for q in questions}:
@@ -389,14 +415,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             reach_llm = sum(r.top_score >= args.min_score for r in retrievals)
             print(
                 f"\nAsking /chat: {reach_llm} of {len(questions)} questions reach the LLM "
-                "(one Gemini request each)"
+                "(one Gemini request each"
+                + ("; graph mode adds one per rewrite)" if args.mode == "graph" else ")")
             )
-            answers = [ask(http, q) for q in questions]
+            answers = [ask(http, q, args.mode) for q in questions]
     except httpx.HTTPError as exc:
         print(f"Could not talk to the API at {args.api_url}: {exc!r}")
         return 1
-    print_answer_report(answers)
-    print(f"\nAnswers written to {write_answers(answers, args.out)}")
+    print_answer_report(answers, args.mode)
+    print(f"\nAnswers written to {write_answers(answers, args.out, args.mode)}")
     return 0
 
 

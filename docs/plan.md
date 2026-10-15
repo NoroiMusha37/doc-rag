@@ -72,7 +72,7 @@ Tick a phase when its commit lands.
   *Done when:* the whole flow works from the browser, and Claude Code lists and calls the MCP tools.
 - [x] **6. Evaluation.** 20-30 hand-written questions with expected document and page; `eval/run_eval.py` reports hit@k and MRR and dumps answers for manual review.
   *Done when:* the script runs end to end and its numbers are recorded as the baseline.
-- [ ] **7. LangGraph orchestrator.** `chat/graph.py` with rewrite, grade and retry nodes; `mode` switch on `/chat`.
+- [x] **7. LangGraph orchestrator.** `chat/graph.py` with rewrite, grade and retry nodes; `mode` switch on `/chat`.
   *Done when:* both modes run on the eval set and the comparison is recorded.
 - [ ] **8. Later, as needed.** Figure captioning via Gemini vision; conversation history; Ollama client; PPTX/DOCX upload (only the upload whitelist changes); a separate worker if background ingestion blocks the API.
 

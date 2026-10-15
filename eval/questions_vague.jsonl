@@ -1,0 +1,8 @@
+{"id": "vague-mask-future", "question": "how do they stop the decoder from cheating by looking at future words?", "kind": "text", "document": "attention.pdf", "pages": [3, 5], "answer_contains": ["mask"]}
+{"id": "vague-sqrt-dk", "question": "why divide by the square root of the key size?", "kind": "text", "document": "attention.pdf", "pages": [4], "answer_contains": ["gradient"]}
+{"id": "vague-word-order", "question": "which trick did they use so the network knows word order?", "kind": "text", "document": "attention.pdf", "pages": [6], "answer_contains": ["position"]}
+{"id": "vague-several-heads", "question": "what is the point of having several attention heads instead of one?", "kind": "text", "document": "attention.pdf", "pages": [5, 9], "answer_contains": ["subspace|different"]}
+{"id": "vague-overfitting", "question": "how did they keep the network from overfitting?", "kind": "text", "document": "attention.pdf", "pages": [8, 9], "answer_contains": ["dropout"]}
+{"id": "vague-lost-signal", "question": "what stops the signal from getting lost in the deep layers?", "kind": "text", "document": "attention.pdf", "pages": [3], "answer_contains": ["residual"]}
+{"id": "vague-hiding-words", "question": "does hiding words during training hurt later use?", "kind": "text", "document": "bert.pdf", "pages": [4, 16], "answer_contains": ["mismatch"]}
+{"id": "vague-both-directions", "question": "why is looking at words on both sides better than reading left to right?", "kind": "text", "document": "bert.pdf", "pages": [1, 2, 4, 8], "answer_contains": ["bidirectional|both"]}

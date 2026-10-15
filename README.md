@@ -62,7 +62,7 @@ The first start downloads about 5 GB of models into a Docker volume.
 | GET    | `/documents/{id}` | One document's status and metadata                             |
 | DELETE | `/documents/{id}` | Remove a document and its chunks                               |
 | POST   | `/search`         | Retrieve ranked chunks for a query                             |
-| POST   | `/chat`           | Answer a question with citations, streamed as SSE              |
+| POST   | `/chat`           | Answer with citations, streamed as SSE; `mode` is `simple` or `graph` |
 | GET    | `/assets/...`     | Figure images, at the `asset_path` of a search result          |
 
 MCP tools: `search_documents`, `ask_documents`, `list_documents`.
@@ -74,7 +74,11 @@ MCP tools: `search_documents`, `ask_documents`, `list_documents`.
 ```
 uv run python eval/run_eval.py            # hit@k and MRR of the search, no Gemini requests
 uv run python eval/run_eval.py --answers --ids att-heads,none-gpt4-params
+uv run python eval/run_eval.py --answers --mode graph            # the LangGraph orchestrator
+uv run python eval/run_eval.py --answers --questions eval/questions_vague.jsonl
 ```
+
+`/chat` has two orchestrators, chosen with `mode`: `simple` (default) searches once and answers; `graph` also rewrites the question and searches again when the first results look weak. `eval/questions_vague.jsonl` holds loosely worded questions, where graph mode answered 5 of 8 and simple mode 2.
 
 Close games and other GPU-heavy programs first. Baseline numbers and how to add questions are in [eval/AGENTS.md](eval/AGENTS.md).
 
@@ -86,7 +90,7 @@ Close games and other GPU-heavy programs first. Baseline numbers and how to add 
 - [x] 4. Answering: hand-written pipeline with Gemini and citations
 - [x] 5. Streamlit UI and MCP server
 - [x] 6. Evaluation set and script
-- [ ] 7. LangGraph orchestrator
+- [x] 7. LangGraph orchestrator
 - [ ] 8. Later: figure captioning, chat history, Ollama, more file types
 
 ## A note on the Gemini free tier
