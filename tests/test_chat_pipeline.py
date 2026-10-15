@@ -3,7 +3,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 
-from src.doc_rag.chat.pipeline import ChatPipeline
+from src.doc_rag.chat.pipeline import ChatPipeline, extract_citations
 from src.doc_rag.chat.schemas import ChatDone, ChatError, ChatEvent, ChatSources, ChatToken
 from src.doc_rag.config import settings
 from src.doc_rag.db.models import ChunkKind
@@ -137,4 +137,4 @@ async def test_an_unexpected_failure_becomes_a_generic_error_event() -> None:
 def test_citations_are_the_existing_source_numbers_found_in_the_answer(
     answer: str, source_count: int, citations: list[int]
 ) -> None:
-    assert ChatPipeline._citations(answer, source_count) == citations
+    assert extract_citations(answer, source_count) == citations

@@ -13,6 +13,9 @@ class ChatRequest(BaseModel):
     top_k: int = Field(default=settings.SEARCH_TOP_K, ge=1, le=settings.RERANK_CANDIDATES)
     # Answer only from these documents; omit to use all of them.
     document_ids: list[uuid.UUID] | None = Field(default=None, min_length=1)
+    # "simple" searches once and answers; "graph" also rewrites the question and searches
+    # again when the first results look weak (costs one more LLM call when it does).
+    mode: Literal["simple", "graph"] = "simple"
 
 
 class Source(SearchResult):
@@ -20,8 +23,14 @@ class Source(SearchResult):
     number: int
 
 
-# The events of one answer, in the order they are sent: `sources` once, `token` many
-# times, then either `done` or `error`.
+# The events of one answer, in the order they are sent: `step` zero or more times (graph
+# mode only), `sources` once, `token` many times, then either `done` or `error`.
+
+
+class ChatStep(BaseModel):
+    event: Literal["step"] = "step"
+    # What the orchestrator did before answering, for people to read.
+    message: str
 
 
 class ChatSources(BaseModel):
@@ -47,4 +56,4 @@ class ChatError(BaseModel):
     message: str
 
 
-ChatEvent = ChatSources | ChatToken | ChatDone | ChatError
+type ChatEvent = ChatStep | ChatSources | ChatToken | ChatDone | ChatError

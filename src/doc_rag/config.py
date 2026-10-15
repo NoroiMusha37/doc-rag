@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     # question is declined without calling the LLM at all.
     CHAT_MIN_SCORE: float = 0.05
 
+    # Graph mode: when the best search result scores below this, the question is rewritten
+    # and searched again. In the phase 6 evaluation every relevant result scored at least
+    # 0.319, and questions the documents cannot answer scored at most 0.07.
+    GRAPH_GOOD_SCORE: float = 0.3
+    # Extra searches graph mode may make with a rewritten question; each costs one LLM call.
+    GRAPH_MAX_RETRIES: int = 1
+
     # LaTeX for formulas; slow and VRAM-heavy, turn off for text-only documents.
     DOCLING_FORMULA_ENRICHMENT: bool = True
     # A document that takes longer is cut off and ingested with the pages parsed so far.

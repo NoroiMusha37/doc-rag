@@ -3,7 +3,13 @@ import uuid
 import pytest
 
 from src.doc_rag.db.models import ChunkKind
-from src.doc_rag.llm.prompts import NOT_FOUND_ANSWER, SYSTEM_PROMPT, build_prompt
+from src.doc_rag.llm.prompts import (
+    NOT_FOUND_ANSWER,
+    REWRITE_SYSTEM_PROMPT,
+    SYSTEM_PROMPT,
+    build_prompt,
+    build_rewrite_prompt,
+)
 from src.doc_rag.retrieval.schemas import SearchResult
 
 
@@ -55,3 +61,15 @@ def test_system_prompt_requires_citations_and_the_exact_decline_sentence() -> No
     assert "[1]" in SYSTEM_PROMPT
     assert NOT_FOUND_ANSWER in SYSTEM_PROMPT
     assert "only the sources" in SYSTEM_PROMPT
+
+
+def test_rewrite_prompt_lists_the_question_and_every_query_already_tried() -> None:
+    prompt = build_rewrite_prompt("how many heads?", ["how many heads?", "attention heads"])
+
+    assert prompt.startswith("Question: how many heads?")
+    assert prompt.endswith("- how many heads?\n- attention heads")
+
+
+def test_rewrite_instructions_ask_for_the_query_alone() -> None:
+    assert "query only" in REWRITE_SYSTEM_PROMPT
+    assert "English" in REWRITE_SYSTEM_PROMPT

@@ -5,10 +5,18 @@ from collections.abc import AsyncIterator, Iterator
 import pytest
 from httpx import AsyncClient
 
-from src.doc_rag.chat.schemas import ChatDone, ChatError, ChatEvent, ChatSources, ChatToken, Source
+from src.doc_rag.chat.schemas import (
+    ChatDone,
+    ChatError,
+    ChatEvent,
+    ChatSources,
+    ChatStep,
+    ChatToken,
+    Source,
+)
 from src.doc_rag.config import settings
 from src.doc_rag.db.models import ChunkKind
-from src.doc_rag.dependencies import get_chat_pipeline
+from src.doc_rag.dependencies import get_chat_graph, get_chat_pipeline
 from src.doc_rag.main import app
 
 SOURCE = Source(
@@ -46,6 +54,9 @@ class FakeChatPipeline:
 def pipeline() -> Iterator[FakeChatPipeline]:
     fake = FakeChatPipeline()
     app.dependency_overrides[get_chat_pipeline] = lambda: fake
+    # A second fake with its own call log, so a test can tell which orchestrator was used.
+    app.dependency_overrides[get_chat_graph] = lambda: fake.graph
+    fake.graph = FakeChatPipeline()
     yield fake
     app.dependency_overrides.clear()
 
@@ -89,6 +100,38 @@ async def test_chat_passes_the_request_to_the_pipeline(
     ]
 
 
+async def test_chat_uses_the_simple_pipeline_unless_graph_mode_is_asked_for(
+    client: AsyncClient, pipeline: FakeChatPipeline
+):
+    await client.post("/chat", json={"question": "Why?"})
+    await client.post("/chat", json={"question": "Why?", "mode": "simple"})
+    assert len(pipeline.calls) == 2
+    assert pipeline.graph.calls == []
+
+    await client.post("/chat", json={"question": "Why?", "mode": "graph", "top_k": 4})
+
+    assert len(pipeline.calls) == 2
+    assert pipeline.graph.calls == [("Why?", 4, None)]
+
+
+async def test_chat_streams_the_steps_of_the_graph_before_the_sources(
+    client: AsyncClient, pipeline: FakeChatPipeline
+):
+    pipeline.graph.events = [
+        ChatStep(message="The best result scored 0.12; searching again for: attention heads"),
+        *pipeline.graph.events,
+    ]
+
+    response = await client.post("/chat", json={"question": "Why?", "mode": "graph"})
+
+    events = _parse(response.text)
+    assert [name for name, _ in events] == ["step", "sources", "token", "token", "done"]
+    assert events[0][1] == {
+        "event": "step",
+        "message": "The best result scored 0.12; searching again for: attention heads",
+    }
+
+
 async def test_chat_streams_an_error_event(client: AsyncClient, pipeline: FakeChatPipeline):
     pipeline.events = [ChatSources(sources=[]), ChatError(message="Rate limit reached.")]
 
@@ -109,6 +152,7 @@ async def test_chat_streams_an_error_event(client: AsyncClient, pipeline: FakeCh
         pytest.param({"question": "x" * 2001}, id="question-too-long"),
         pytest.param({"question": "x", "top_k": 0}, id="top-k-zero"),
         pytest.param({"question": "x", "document_ids": []}, id="empty-document-filter"),
+        pytest.param({"question": "x", "mode": "agent"}, id="unknown-mode"),
     ],
 )
 async def test_chat_rejects_invalid_requests(
@@ -118,3 +162,4 @@ async def test_chat_rejects_invalid_requests(
 
     assert response.status_code == 422
     assert pipeline.calls == []
+    assert pipeline.graph.calls == []

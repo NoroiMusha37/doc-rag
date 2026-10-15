@@ -8,7 +8,7 @@ The only place that talks to a language model. Everything else depends on the `L
 
 - `base.py` - `LLMClient` (a `Protocol` with one method, `stream(system, prompt)`) and `LLMError`
 - `gemini.py` - `GeminiClient`, the `LLMClient` backed by the Gemini API (`google-genai`)
-- `prompts.py` - `SYSTEM_PROMPT`, `NOT_FOUND_ANSWER`, `build_prompt(question, sources)`
+- `prompts.py` - `SYSTEM_PROMPT`, `NOT_FOUND_ANSWER`, `build_prompt(question, sources)`, and for graph mode `REWRITE_SYSTEM_PROMPT`, `build_rewrite_prompt(question, tried)`
 
 ## Local Contracts
 
@@ -25,6 +25,7 @@ The only place that talks to a language model. Everything else depends on the `L
 - Measured on 2026-10-12 with `gemini-3.8-flash` on the free tier and a 15k-character prompt: a healthy call starts answering in 3.6-4.8 s with about 400 thinking tokens; under load the same call returned 503 ("high demand"), hung, or stalled mid-answer until the server deadline (504), and with retries took 24-52 s. `thinking_level="minimal"` is rejected by this model (400).
 - Every model in `GEMINI_MODELS` must have a free tier (see the pricing page linked in `config.py`). Per-model free limits are not published; they are shown per account at https://aistudio.google.com/rate-limit.
 - `build_prompt` numbers sources from 1 by position; those numbers are the citation numbers the model is told to use, so callers must keep the same order when mapping citations back.
+- The rewrite prompt turns a question into one short English search query and lists the queries already tried; its reply is the query alone. It goes through the same `stream` method as an answer (the graph joins the pieces), so it uses the same models, fallback and quota: each rewrite is one request.
 - `NOT_FOUND_ANSWER` is the exact sentence the model is told to reply with when the sources lack the answer, and the same sentence the chat pipeline returns itself when the search finds nothing relevant.
 
 ## Work Guidance

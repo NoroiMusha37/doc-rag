@@ -1,6 +1,7 @@
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.doc_rag.chat.graph import ChatGraph
 from src.doc_rag.chat.pipeline import ChatPipeline
 from src.doc_rag.db.repository import DBRepository
 from src.doc_rag.db.session import get_db
@@ -49,3 +50,10 @@ def get_chat_pipeline(
     llm: LLMClient = Depends(get_llm),
 ) -> ChatPipeline:
     return ChatPipeline(retrieval, llm)
+
+
+def get_chat_graph(
+    retrieval: RetrievalService = Depends(get_retrieval_service),
+    llm: LLMClient = Depends(get_llm),
+) -> ChatGraph:
+    return ChatGraph(retrieval, llm)

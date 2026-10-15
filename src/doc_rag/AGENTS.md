@@ -10,7 +10,7 @@ The FastAPI application: settings, database access, and (as phases land) ingesti
 - `config.py` - `Settings` and the module-level `settings` instance
 - `logger.py` - `setup_logging()`, called once at the top of `main.py`
 - `schemas.py` - DTOs for routes defined in `main.py`
-- `dependencies.py` - FastAPI dependencies: `get_db_repo`, `get_documents_service`, `get_retrieval_service`, `get_chat_pipeline`, and `get_pipeline` / `get_embedder` / `get_reranker` / `get_llm` (lifespan objects)
+- `dependencies.py` - FastAPI dependencies: `get_db_repo`, `get_documents_service`, `get_retrieval_service`, `get_chat_pipeline`, `get_chat_graph`, and `get_pipeline` / `get_embedder` / `get_reranker` / `get_llm` (lifespan objects)
 - `db/session.py` - module-level `engine`, `SessionLocal`, and `get_db` (the per-request session dependency)
 - `db/models.py` - `Base`, `Document`, `Chunk`, and the `DocumentStatus` / `ChunkKind` string enums
 - `db/repository.py` - `DBRepository` with `documents` (`DocumentsRepository`) and `chunks` (`ChunksRepository`)
@@ -31,7 +31,8 @@ The FastAPI application: settings, database access, and (as phases land) ingesti
 - Services are built per request from the request's repository; they are not singletons and never open sessions themselves.
 - Only objects that are expensive or stateful across requests (the GPU models: `Embedder`, `Reranker`, the ingestion pipeline that owns the parser and chunker, and the `GeminiClient` with its HTTP connection pool) are built in the lifespan, yielded in its state dict, and returned from `request.state` by a dependency. One `Embedder` is shared by ingestion and search. Model wrappers hold a lock so only one thread uses a model at a time.
 - `DBRepository.open()` is only for code that runs outside any request (the ingestion background task, startup), where no request session exists.
-- Routers are registered in `main.py` with `app.include_router(...)`. Each feature folder has `router.py` (thin), `service.py` (logic, may raise `HTTPException`) and `schemas.py`; in `chat/` the logic file is `pipeline.py`, as named in `docs/plan.md`.
+- Routers are registered in `main.py` with `app.include_router(...)`. Each feature folder has `router.py` (thin), `service.py` (logic, may raise `HTTPException`) and `schemas.py`; in `chat/` the logic files are `pipeline.py` and `graph.py`, as named in `docs/plan.md`.
+- LangGraph is imported only in `chat/graph.py`; the rest of the application does not depend on it.
 - Streaming routes use FastAPI's own SSE support: `response_class=EventSourceResponse` and `yield ServerSentEvent(event=..., data=...)` from the route (`fastapi.sse`). A streaming route cannot change its status code after the first event, so failures during the stream are sent as an `error` event.
 - The language model is used only through `LLMClient` from `llm/base.py`; no module outside `llm/` imports `google.genai`.
 - The MCP endpoint `/mcp` is added to the app's routes in `main.py` and its session manager runs inside the lifespan; MCP tools reach the lifespan objects through their call's `request.state` and use `DBRepository.open()` for the database. See `mcp_server/AGENTS.md`.

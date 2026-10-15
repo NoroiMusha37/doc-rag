@@ -23,6 +23,28 @@ If they answer only part of the question, answer that part and say what is missi
 """
 
 
+REWRITE_SYSTEM_PROMPT = """\
+You help search the user's documents. Turn the question into a short search query that \
+would find the passage that answers it.
+
+Rules:
+- Use the words the documents would use: expand abbreviations, replace vague or colloquial \
+words with technical terms, and keep names, numbers and symbols exactly.
+- Translate the query to English if the question is in another language; the documents \
+are mostly in English.
+- Queries that were already tried are listed. They did not find a relevant passage, so \
+write a clearly different query, not the same words reordered.
+- Reply with the query only: one line, no quotes, no explanation, at most 20 words.
+"""
+
+
+def build_rewrite_prompt(question: str, tried: Sequence[str]) -> str:
+    """The question and the queries that already failed to find a relevant passage."""
+    return f"Question: {question}\n\nQueries already tried:\n" + "\n".join(
+        f"- {query}" for query in tried
+    )
+
+
 def build_prompt(question: str, sources: Sequence[SearchResult]) -> str:
     """The numbered sources followed by the question.
 
