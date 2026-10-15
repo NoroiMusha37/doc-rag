@@ -33,6 +33,7 @@ The SQL for both searches is in `db/repository.py` (`ChunksRepository.search_den
 
 ## Verification
 
+- `uv run python eval/run_eval.py` against the running stack - hit@k and MRR on the evaluation questions; run it before and after a retrieval change (see `eval/AGENTS.md`)
 - `uv run pytest tests/test_fusion.py tests/test_retrieval_service.py tests/test_search_api.py` - fusion maths, the service flow with a fake repository, embedder and reranker, and the route's validation
 - With the stack running and a document ingested: `curl -H "Content-Type: application/json" -d '{"query": "..."}' http://localhost:8000/search`; an exact table header should return that table's page first, and a paraphrase of a concept should return the section that explains it
 

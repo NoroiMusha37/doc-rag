@@ -70,7 +70,7 @@ Tick a phase when its commit lands.
   *Done when:* a question answered by a table gets a correct answer citing that page, and an off-topic question is declined.
 - [x] **5. UI and MCP.** Streamlit page (upload, document status, chat, expandable sources with page numbers and figure images). MCP tools `search_documents`, `ask_documents`, `list_documents`.
   *Done when:* the whole flow works from the browser, and Claude Code lists and calls the MCP tools.
-- [ ] **6. Evaluation.** 20-30 hand-written questions with expected document and page; `eval/run_eval.py` reports hit@k and MRR and dumps answers for manual review.
+- [x] **6. Evaluation.** 20-30 hand-written questions with expected document and page; `eval/run_eval.py` reports hit@k and MRR and dumps answers for manual review.
   *Done when:* the script runs end to end and its numbers are recorded as the baseline.
 - [ ] **7. LangGraph orchestrator.** `chat/graph.py` with rewrite, grade and retry nodes; `mode` switch on `/chat`.
   *Done when:* both modes run on the eval set and the comparison is recorded.

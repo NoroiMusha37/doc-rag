@@ -1,0 +1,30 @@
+{"id": "att-bleu-ende", "question": "What BLEU score did the big Transformer reach on the WMT 2014 English-to-German translation task?", "kind": "table", "document": "attention.pdf", "pages": [1, 8], "answer_contains": ["28.4"]}
+{"id": "att-flops-base", "question": "How many floating point operations did training the base Transformer cost?", "kind": "table", "document": "attention.pdf", "pages": [8], "answer_contains": ["3.3"]}
+{"id": "att-encoder-layers", "question": "How many identical layers does the Transformer encoder consist of?", "kind": "text", "document": "attention.pdf", "pages": [3], "answer_contains": ["6|six"]}
+{"id": "att-dot-product", "question": "What is the formula for scaled dot-product attention?", "kind": "formula", "document": "attention.pdf", "pages": [4], "answer_contains": ["softmax"]}
+{"id": "att-positional", "question": "How are the sinusoidal positional encodings defined?", "kind": "formula", "document": "attention.pdf", "pages": [6], "answer_contains": ["sin", "cos"]}
+{"id": "att-optimizer", "question": "Which optimizer and how many warmup steps did the authors use to train the Transformer?", "kind": "text", "document": "attention.pdf", "pages": [7], "answer_contains": ["Adam", "4000"]}
+{"id": "att-path-length", "question": "What is the maximum path length between positions in a self-attention layer compared with a recurrent layer?", "kind": "table", "document": "attention.pdf", "pages": [6], "answer_contains": ["O(1)", "O(n)"]}
+{"id": "att-params-big", "question": "How many parameters, in millions, does the big Transformer model have in the variations table?", "kind": "table", "document": "attention.pdf", "pages": [9], "answer_contains": ["213"]}
+{"id": "att-parsing-f1", "question": "What F1 score did the 4-layer Transformer get on WSJ section 23 in the semi-supervised setting?", "kind": "table", "document": "attention.pdf", "pages": [10], "answer_contains": ["92.7"]}
+{"id": "att-figure-architecture", "question": "What does the figure of the Transformer model architecture show?", "kind": "figure", "document": "attention.pdf", "pages": [3], "answer_contains": ["encoder", "decoder"]}
+{"id": "att-training-time", "question": "How long did the big models train and on what hardware?", "kind": "text", "document": "attention.pdf", "pages": [1, 7, 8], "answer_contains": ["3.5"]}
+{"id": "att-heads", "question": "How many attention heads does the base model use and what is the dimension of each key?", "kind": "text", "document": "attention.pdf", "pages": [5, 9], "answer_contains": ["8", "64"]}
+{"id": "bert-glue-large", "question": "What average GLUE score did BERT-LARGE obtain in the GLUE test results table?", "kind": "table", "document": "bert.pdf", "pages": [6], "answer_contains": ["82.1"]}
+{"id": "bert-param-counts", "question": "How many parameters do BERT-BASE and BERT-LARGE have?", "kind": "text", "document": "bert.pdf", "pages": [3, 8], "answer_contains": ["110", "340"]}
+{"id": "bert-masking", "question": "What fraction of tokens does BERT mask for the masked language model, and how are the chosen tokens replaced?", "kind": "text", "document": "bert.pdf", "pages": [4, 16], "answer_contains": ["15", "80"]}
+{"id": "bert-pretraining-setup", "question": "What batch size, number of steps and learning rate were used to pre-train BERT?", "kind": "text", "document": "bert.pdf", "pages": [13], "answer_contains": ["256", "1,000,000|1M|1 million"]}
+{"id": "bert-squad11-f1", "question": "What F1 score did the BERT-LARGE ensemble with TriviaQA reach on the SQuAD 1.1 test set?", "kind": "table", "document": "bert.pdf", "pages": [1, 7], "answer_contains": ["93.2"]}
+{"id": "bert-no-nsp-qnli", "question": "How much does QNLI accuracy drop when next sentence prediction is removed from pre-training?", "kind": "table", "document": "bert.pdf", "pages": [8], "answer_contains": ["84.9"]}
+{"id": "bert-ner-dev-f1", "question": "What dev F1 does fine-tuned BERT-BASE get on CoNLL-2003 named entity recognition?", "kind": "table", "document": "bert.pdf", "pages": [9], "answer_contains": ["96.4"]}
+{"id": "bert-input-embeddings", "question": "Which three embeddings are summed to form the BERT input representation?", "kind": "figure", "document": "bert.pdf", "pages": [4, 5], "answer_contains": ["token", "segment", "position"]}
+{"id": "bert-vs-gpt-batch", "question": "How does the pre-training batch size of BERT compare with that of OpenAI GPT?", "kind": "text", "document": "bert.pdf", "pages": [14], "answer_contains": ["128,000", "32,000"]}
+{"id": "bert-model-size-ppl", "question": "Which model configuration reaches a masked LM perplexity of 3.23?", "kind": "table", "document": "bert.pdf", "pages": [9], "answer_contains": ["24"]}
+{"id": "bert-squad20-f1", "question": "What test F1 did BERT-LARGE obtain on SQuAD 2.0?", "kind": "table", "document": "bert.pdf", "pages": [1, 7], "answer_contains": ["83.1"]}
+{"id": "uk-att-heads", "question": "Скільки голів уваги використовує базова модель Transformer і яка розмірність ключів?", "kind": "text", "language": "uk", "document": "attention.pdf", "pages": [5, 9], "answer_contains": ["8", "64"]}
+{"id": "uk-bert-masking", "question": "Який відсоток токенів BERT маскує під час попереднього навчання?", "kind": "text", "language": "uk", "document": "bert.pdf", "pages": [4, 16], "answer_contains": ["15"]}
+{"id": "uk-att-bleu-ende", "question": "Яку оцінку BLEU отримала велика модель Transformer для перекладу з англійської на німецьку?", "kind": "table", "language": "uk", "document": "attention.pdf", "pages": [1, 8], "answer_contains": ["28.4"]}
+{"id": "none-capital", "question": "What is the capital of Australia?", "kind": "none"}
+{"id": "none-black-scholes", "question": "How is the price of a European call option computed with the Black-Scholes formula?", "kind": "none"}
+{"id": "none-gpt4-params", "question": "How many parameters does GPT-4 have?", "kind": "none"}
+{"id": "none-resnet-imagenet", "question": "What top-1 accuracy does ResNet-50 reach on ImageNet?", "kind": "none"}

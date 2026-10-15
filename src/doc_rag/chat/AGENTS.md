@@ -22,12 +22,12 @@ Answers a question from the documents and streams the answer with its sources. `
 - `Source.number` is the position in the list sent in the `sources` event and the number used in the prompt; they must never be renumbered between the two.
 - `ChatPipeline` is built per request (`get_chat_pipeline`) from the request's `RetrievalService` and the lifespan's `LLMClient`. It contains no search logic and no provider code.
 - Each request is single-turn: there is no conversation history yet (phase 8).
-- `CHAT_MIN_SCORE` (default 0.05) comes from manual tests in phase 3 (off-topic results scored at most 0.03, relevant ones at least 0.35); revisit it with the phase 6 evaluation.
+- `CHAT_MIN_SCORE` (default 0.05) comes from manual tests in phase 3 (off-topic results scored at most 0.03, relevant ones at least 0.35); the phase 6 evaluation (`eval/AGENTS.md`) shows how far the unanswerable questions are from it: three scored 0.002-0.004, but a GPT-4 question scored 0.070. Re-measure with `eval/run_eval.py` before moving the threshold.
 
 ## Work Guidance
 
 - Keep the router a pass-through; anything that decides what to answer belongs in the pipeline.
-- New consumers that need the answer without SSE (MCP tools, the evaluation script) should iterate `ChatPipeline.run` and read the `done` event, not parse the HTTP stream.
+- Consumers that run inside the application and need the answer without SSE (the MCP tools) should iterate `ChatPipeline.run` and read the `done` event, not parse the HTTP stream. The evaluation script is a separate HTTP client and reads `/chat` itself (see `eval/AGENTS.md`).
 
 ## Verification
 

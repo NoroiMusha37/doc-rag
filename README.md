@@ -67,6 +67,17 @@ The first start downloads about 5 GB of models into a Docker volume.
 
 MCP tools: `search_documents`, `ask_documents`, `list_documents`.
 
+## Evaluation
+
+`eval/questions.jsonl` holds 30 hand-written questions (text, table, figure, formula, Ukrainian, and some the documents cannot answer) about two public papers, with the expected document and pages. With the stack running and `attention.pdf` and `bert.pdf` uploaded:
+
+```
+uv run python eval/run_eval.py            # hit@k and MRR of the search, no Gemini requests
+uv run python eval/run_eval.py --answers --ids att-heads,none-gpt4-params
+```
+
+Close games and other GPU-heavy programs first. Baseline numbers and how to add questions are in [eval/AGENTS.md](eval/AGENTS.md).
+
 ## Roadmap
 
 - [x] 1. Skeleton: Compose, config, database, migrations, health check
@@ -74,7 +85,7 @@ MCP tools: `search_documents`, `ask_documents`, `list_documents`.
 - [x] 3. Retrieval: hybrid search, RRF fusion, reranking
 - [x] 4. Answering: hand-written pipeline with Gemini and citations
 - [x] 5. Streamlit UI and MCP server
-- [ ] 6. Evaluation set and script
+- [x] 6. Evaluation set and script
 - [ ] 7. LangGraph orchestrator
 - [ ] 8. Later: figure captioning, chat history, Ollama, more file types
 

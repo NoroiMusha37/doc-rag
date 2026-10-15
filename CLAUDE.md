@@ -16,6 +16,7 @@ Run everything from the repo root:
 - `uv run alembic upgrade head` (or `docker compose exec api alembic upgrade head`) - apply migrations
 - `uv run pytest` - tests; `uv run --group ui pytest` also runs the web page tests (skipped without Streamlit)
 - `uv run ruff check` / `uv run ruff format` - lint and format
+- `uv run python eval/run_eval.py` - evaluate a running stack against `eval/questions.jsonl` (retrieval only; `--answers` also asks `/chat` and spends Gemini requests)
 
 ## Architecture
 Target layout under `src/doc_rag/` (built phase by phase):
@@ -29,6 +30,7 @@ Target layout under `src/doc_rag/` (built phase by phase):
 - `chat/` - `pipeline.py` (hand-written) and `graph.py` (LangGraph)
 - `mcp_server/` - MCP tools mounted in the FastAPI app
 - `ui/` (repo root) - Streamlit page (`app.py`) and its API client (`client.py`), in their own container
+- `eval/` (repo root) - hand-written question set and the script that scores retrieval and answers against the running API
 
 ## Facts
 Every time you get new information about this project, or new way of interaction with 
@@ -89,6 +91,8 @@ add short description of acquired knowledge here in bulleted list:
 - The web page (`ui/`) is a client of the REST API only: no `src.doc_rag` imports, plain dicts instead of DTOs, all HTTP in `ui/client.py` (`ApiClient`, `ApiError`). Its dependencies are the `ui` group (`uv add --group ui <pkg>`), installed in `ui/Dockerfile` with `uv sync --frozen --only-group ui`, so the image has no torch. Details in `ui/AGENTS.md`
 - Figure images are served by `app.mount("/assets", StaticFiles(directory=STORAGE_DIR/assets, check_dir=False))`; a chunk's `asset_path` (`assets/<document id>/<n>.png`) is the URL path. The page fetches them server-side, because the browser cannot reach `http://api:8000`
 - Streamlit 1.65: `st.write_stream(generator)` streams and returns the text; `st.fragment(run_every=seconds)(function)()` makes a part refresh on its own, and `st.rerun()` inside a fragment reruns the whole page; `st.form(clear_on_submit=True)` is what empties a `file_uploader`; `st.cache_resource` is shared by all sessions. Tests use `streamlit.testing.v1.AppTest.from_file(path)` (path is relative to the test file, hence `../ui/app.py`) and replace `ui.client.ApiClient` with a fake, clearing `st.cache_resource` per test
+- Evaluation (`eval/`): an HTTP client of the running API, no `src` imports; 30 questions about `attention.pdf` (arXiv 1706.03762v7) and `bert.pdf` (arXiv 1810.04805v2) with page labels read from the PDFs. Retrieval is scored with `/search` (hit@1/3/6, MRR), so it costs no Gemini quota; `--answers` calls `/chat`. Baseline (2026-10-15): hit@1 92.3%, hit@3 and hit@6 100%, MRR 0.955; relevant results score at least 0.319, unanswerable ones at most 0.070 (the GPT-4 question passes `CHAT_MIN_SCORE` 0.05 and is declined by the LLM). Label pages by reading every page of the PDF: the first labels missed pages that also state the answer and made the numbers look worse. Details in `eval/AGENTS.md`
+- A game running in the background (seen: `eu5.exe`) starves the container's GPU work: a search that takes 0.5 s then takes 50 s to several minutes, the API sits at 100% CPU, and a tiny matmul in the container does not finish in 100 s. Only timings are affected, not scores. Ask the user to close it before ingesting, rebuilding or evaluating
 - Embedding dimension is 1024 (bge-m3); changing the embedder requires a migration and re-embedding all chunks
 - `chat/pipeline.py` and `chat/graph.py` share `retrieval/`; do not fork retrieval logic into either
 - GPU models (Docling, embedder, reranker) are loaded once at startup and reused; never instantiate per request

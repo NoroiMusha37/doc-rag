@@ -177,3 +177,5 @@ pyrightconfig.json
 
 # doc-rag: uploaded files and extracted assets
 /data/
+# doc-rag: evaluation output
+eval/results/

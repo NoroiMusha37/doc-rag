@@ -95,6 +95,7 @@ Child docs:
 - `src/doc_rag/AGENTS.md` - the FastAPI application: import style, settings, repository, logging and app conventions; indexes `ingestion/`, `documents/`, `retrieval/`, `llm/`, `chat/` and `mcp_server/`
 - `migrations/AGENTS.md` - Alembic setup and how revisions are generated and applied
 - `ui/AGENTS.md` - the Streamlit page and its API client; a separate container that talks to the API only
+- `eval/AGENTS.md` - the evaluation question set and script: retrieval metrics, answer checks, baseline
 
 Owned by the root doc:
 
@@ -107,7 +108,3 @@ Owned by the root doc:
 - `pyproject.toml`, `uv.lock` - dependencies and tool config; dependencies and index sources are added with `uv add`, not by hand. The API's are the project dependencies; the web page's are the `ui` group
 - `Dockerfile`, `compose.yaml`, `.env.example` - API image (GPU, runs uvicorn, has its own HEALTHCHECK) and the `db`, `api` and `ui` services; all credentials come from `.env`
 - `tests/` - pytest suite; `conftest.py` sets placeholder env vars so settings load without a `.env`
-
-Create a child AGENTS.md and list it here when its folder is first created:
-
-- `eval/`
