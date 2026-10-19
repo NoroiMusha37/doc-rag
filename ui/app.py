@@ -29,6 +29,12 @@ def figure(asset_path: str) -> bytes:
     return get_client().asset(asset_path)
 
 
+MODES = {
+    "simple": "Simple: search once",
+    "graph": "Graph: rewrite weak questions and search again",
+}
+
+
 def page_label(source: dict) -> str:
     if source["page_start"] is None:
         return ""
@@ -101,6 +107,8 @@ def render_sources(sources: list[dict], citations: list[int]) -> None:
 
 def render_message(message: dict) -> None:
     with st.chat_message(message["role"]):
+        for step in message.get("steps", []):
+            st.caption(step)
         if message["content"]:
             st.markdown(message["content"])
         if message.get("error"):
@@ -108,13 +116,22 @@ def render_message(message: dict) -> None:
         render_sources(message.get("sources", []), message.get("citations", []))
 
 
-def answer(question: str, document_ids: list[str] | None) -> dict:
+def answer(question: str, document_ids: list[str] | None, mode: str) -> dict:
     """Stream the answer into the page and return it as a chat message."""
-    message: dict = {"role": "assistant", "content": "", "sources": [], "citations": []}
+    message: dict = {
+        "role": "assistant",
+        "content": "",
+        "steps": [],
+        "sources": [],
+        "citations": [],
+    }
 
     def tokens() -> Iterator[str]:
-        for event, data in get_client().chat(question, document_ids):
-            if event == "sources":
+        for event, data in get_client().chat(question, document_ids, mode):
+            if event == "step":
+                message["steps"].append(data["message"])
+                st.caption(data["message"])
+            elif event == "sources":
                 message["sources"] = data["sources"]
             elif event == "token":
                 message["content"] += data["text"]
@@ -162,6 +179,7 @@ with st.sidebar:
     selected = st.multiselect(
         "Answer only from", list(ready), format_func=ready.get, placeholder="All documents"
     )
+    mode = st.radio("Answering mode", list(MODES), format_func=MODES.get)
     if st.button("Clear the chat"):
         st.session_state.messages = []
 
@@ -172,4 +190,4 @@ for message in st.session_state.messages:
 if question := st.chat_input("Ask a question about your documents"):
     st.session_state.messages.append({"role": "user", "content": question})
     render_message(st.session_state.messages[-1])
-    st.session_state.messages.append(answer(question, selected or None))
+    st.session_state.messages.append(answer(question, selected or None, mode))

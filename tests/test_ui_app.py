@@ -44,7 +44,7 @@ class FakeClient:
     documents: list[dict] = []
     events: list[tuple[str, dict]] = []
     down = False
-    asked: list[tuple[str, list[str] | None]] = []
+    asked: list[tuple[str, list[str] | None, str]] = []
     figure: bytes | None = None
     fetched: list[str] = []
 
@@ -62,8 +62,8 @@ class FakeClient:
             raise ApiError("Not Found")
         return self.figure
 
-    def chat(self, question: str, document_ids: list[str] | None = None):
-        self.asked.append((question, document_ids))
+    def chat(self, question: str, document_ids: list[str] | None = None, mode: str = "simple"):
+        self.asked.append((question, document_ids, mode))
         yield from self.events
 
 
@@ -126,7 +126,7 @@ def test_a_question_shows_the_answer_and_its_sources(api) -> None:
     page.chat_input[0].set_value("What is delta?").run()
 
     assert not page.exception
-    assert api.asked == [("What is delta?", None)]
+    assert api.asked == [("What is delta?", None, "simple")]
     user, assistant = page.chat_message
     assert user.markdown[0].value == "What is delta?"
     assert assistant.markdown[0].value == "Delta is the price sensitivity [1]."
@@ -144,7 +144,26 @@ def test_the_filter_limits_the_question_to_the_chosen_documents(api) -> None:
     page.sidebar.multiselect[0].select("7f3c").run()
     page.chat_input[0].set_value("What is delta?").run()
 
-    assert api.asked == [("What is delta?", ["7f3c"])]
+    assert api.asked == [("What is delta?", ["7f3c"], "simple")]
+
+
+def test_graph_mode_is_sent_and_its_steps_are_kept_with_the_answer(api) -> None:
+    api.events = [
+        ("step", {"message": "Weak results; searching again as: delta definition"}),
+        ("sources", {"sources": [SOURCE]}),
+        ("token", {"text": "Delta is the price sensitivity [1]."}),
+        ("done", {"answer": "Delta is the price sensitivity [1].", "citations": [1]}),
+    ]
+
+    page = _page()
+    page.sidebar.radio[0].set_value("graph").run()
+    page.chat_input[0].set_value("why delta?").run()
+
+    assert api.asked == [("why delta?", None, "graph")]
+    page.run()
+    assert page.chat_message[1].caption[0].value == (
+        "Weak results; searching again as: delta definition"
+    )
 
 
 def test_an_error_event_is_shown_with_the_text_received_so_far(api) -> None:

@@ -91,7 +91,7 @@ Close games and other GPU-heavy programs first. Baseline numbers and how to add 
 - [x] 5. Streamlit UI and MCP server
 - [x] 6. Evaluation set and script
 - [x] 7. LangGraph orchestrator
-- [ ] 8. Later: figure captioning, chat history, Ollama, more file types
+- [x] 8. Later (closed, not needed): figure captioning, chat history, Ollama, more file types
 
 ## A note on the Gemini free tier
 

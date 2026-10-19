@@ -25,7 +25,8 @@ The Streamlit web page: upload PDFs, watch their ingestion status, ask questions
 ## Work Guidance
 
 - Keep `app.py` to drawing and `client.py` to HTTP; logic worth testing without a browser belongs in `client.py`.
-- Source text is rendered as Markdown so tables and `$...$` formulas display; a text with two plain dollar amounts on one line can therefore be shown as a formula.
+- Source text is rendered as Markdown so tables and `$...$` formulas display; a text with two plain dollar amounts on one line can therefore be shown as a formula. The page shows exactly what the API stores; damaged formulas and text are fixed in ingestion, not here.
+- The sidebar radio picks the `/chat` mode (`simple` or `graph`) for the next question. Graph mode's `step` events are shown as captions above the answer and kept in the message.
 
 ## Verification
 

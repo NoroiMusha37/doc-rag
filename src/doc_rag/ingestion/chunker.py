@@ -13,6 +13,7 @@ from docling_core.types.doc import DocItem, DocItemLabel, DoclingDocument, Pictu
 
 from src.doc_rag.config import settings
 from src.doc_rag.db.models import ChunkKind
+from src.doc_rag.ingestion.cleaner import clean_text
 from src.doc_rag.ingestion.schemas import ParsedChunk
 
 logger = logging.getLogger(__name__)
@@ -81,8 +82,8 @@ class DocumentChunker:
         return ParsedChunk(
             ordinal=ordinal,
             kind=self._kind({item.label for item in items}, has_picture),
-            text=doc_chunk.text,
-            embed_text=self._chunker.contextualize(doc_chunk),
+            text=clean_text(doc_chunk.text),
+            embed_text=clean_text(self._chunker.contextualize(doc_chunk)),
             heading_path=HEADING_SEPARATOR.join(doc_chunk.meta.headings or []),
             page_start=page_start,
             page_end=page_end,

@@ -65,7 +65,11 @@ def test_chat_yields_the_events_in_order() -> None:
     ]
 
     def handler(request: httpx.Request) -> httpx.Response:
-        assert json.loads(request.content) == {"question": "What is delta?", "document_ids": None}
+        assert json.loads(request.content) == {
+            "question": "What is delta?",
+            "document_ids": None,
+            "mode": "simple",
+        }
         return httpx.Response(
             200, text=_sse(*events), headers={"content-type": "text/event-stream"}
         )

@@ -112,6 +112,25 @@ def test_embed_text_is_prefixed_with_the_heading(chunks: list[ParsedChunk]) -> N
         assert chunk.embed_text == f"{chunk.heading_path}\n{chunk.text}"
 
 
+def test_chunk_text_is_cleaned_before_it_is_stored_and_embedded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "STORAGE_DIR", str(tmp_path))
+    monkeypatch.setattr(
+        chunker_module.HuggingFaceTokenizer, "from_pretrained", lambda **kwargs: WordTokenizer()
+    )
+    doc = DoclingDocument(name="scan")
+    doc.add_heading("Options", prov=_prov(1))
+    doc.add_text(DocItemLabel.TEXT, "The ex\xad piration date.", prov=_prov(1))
+    doc.add_formula("x & = 1 \\\\ y & = 2", prov=_prov(1))
+
+    (chunk,) = DocumentChunker().chunk(doc, tmp_path / "assets" / "doc")
+
+    assert "expiration" in chunk.text
+    assert "\xad" not in chunk.embed_text
+    assert "$$\\begin{aligned}x & = 1 \\\\ y & = 2\\end{aligned}$$" in chunk.embed_text
+
+
 def test_a_later_batch_continues_numbering_and_inherits_the_open_section(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -39,15 +39,18 @@ class ApiClient:
         return self._request("GET", f"/{asset_path}").content
 
     def chat(
-        self, question: str, document_ids: list[str] | None = None
+        self, question: str, document_ids: list[str] | None = None, mode: str = "simple"
     ) -> Iterator[tuple[str, dict]]:
         """Ask a question; yields the answer's events as (name, data) while they arrive.
 
-        Names, in order: `sources` once, `token` many times, then `done` or `error`.
+        Names, in order: `step` (graph mode only, any number), `sources` once, `token` many
+        times, then `done` or `error`.
         """
         try:
             with self._http.stream(
-                "POST", "/chat", json={"question": question, "document_ids": document_ids}
+                "POST",
+                "/chat",
+                json={"question": question, "document_ids": document_ids, "mode": mode},
             ) as response:
                 if response.is_error:
                     response.read()

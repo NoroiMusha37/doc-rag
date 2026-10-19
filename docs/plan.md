@@ -74,7 +74,7 @@ Tick a phase when its commit lands.
   *Done when:* the script runs end to end and its numbers are recorded as the baseline.
 - [x] **7. LangGraph orchestrator.** `chat/graph.py` with rewrite, grade and retry nodes; `mode` switch on `/chat`.
   *Done when:* both modes run on the eval set and the comparison is recorded.
-- [ ] **8. Later, as needed.** Figure captioning via Gemini vision; conversation history; Ollama client; PPTX/DOCX upload (only the upload whitelist changes); a separate worker if background ingestion blocks the API.
+- [x] **8. Later, as needed.** Closed without implementing: none of these was needed. Candidates if ever wanted: figure captioning via Gemini vision; conversation history; Ollama client; PPTX/DOCX upload (only the upload whitelist changes); a separate worker if background ingestion blocks the API.
 
 ## Known risks
 

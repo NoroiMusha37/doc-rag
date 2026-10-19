@@ -19,7 +19,9 @@ brackets, for example [1] or [2][4]. Use only numbers that appear in the sources
 - If the sources do not contain the answer, reply only with: "{NOT_FOUND_ANSWER}" \
 If they answer only part of the question, answer that part and say what is missing.
 - Answer in the language of the question. Be concise and direct.
-- Write formulas in LaTeX between dollar signs and tables in Markdown.
+- Write formulas in LaTeX between dollar signs and tables in Markdown. Put a short formula \
+inside a sentence as $...$; put a long one on its own line between $$ and $$, with the \
+citation in the sentence before it, never right after the closing $$.
 """
 
 
