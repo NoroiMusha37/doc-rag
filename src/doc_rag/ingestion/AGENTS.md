@@ -28,6 +28,7 @@ The embedder lives in `src/doc_rag/embedding/embedder.py` (`Embedder`).
   - A picture is not in a chunk's items; only its caption is. Pictures are linked to chunks through `picture.captions`, so a picture without a caption has no chunk.
   - Items under the same heading are merged into one chunk, so `kind` is the richest content present: table, then figure, then formula (only if nothing else), then text.
   - Tables are serialized as Markdown and formulas as `$$latex$$` inside `text`.
+- Docling keeps a whole `convert()` call in RAM, so the pipeline parses `DOCLING_BATCH_PAGES` pages at a time (`DocumentParser.page_count`, then `parse(path, first_page, last_page)`; page numbers in the result are those of the whole file) and chunks each batch before parsing the next. `DocumentChunker.chunk` takes `first_ordinal` and `inherited_heading_path` so numbering, figure file names and section context continue across batches. A paragraph or section split by a batch boundary becomes two chunks. Everything is still embedded and stored once, after the last batch. `DOCLING_IMAGES_SCALE` sets the resolution of figure images.
 - A partially converted document (timeout or failed pages) is kept and logged as a warning; only a full conversion failure raises `ParsingError`.
 
 ## Work Guidance

@@ -11,7 +11,7 @@ from src.doc_rag.db.repository import DBRepository
 from src.doc_rag.embedding.embedder import Embedder
 from src.doc_rag.ingestion.chunker import DocumentChunker
 from src.doc_rag.ingestion.parser import DocumentParser
-from src.doc_rag.ingestion.schemas import ParsedDocument
+from src.doc_rag.ingestion.schemas import ParsedChunk, ParsedDocument
 
 logger = logging.getLogger(__name__)
 
@@ -82,11 +82,22 @@ class IngestionPipeline:
             logger.info(f"Document {document_id} was deleted while it was being processed")
 
     def _parse(self, document_id: uuid.UUID, filename: str) -> ParsedDocument:
-        document = self._parser.parse(upload_path(document_id, filename))
-        return ParsedDocument(
-            page_count=len(document.pages),
-            chunks=self._chunker.chunk(document, assets_dir(document_id)),
-        )
+        path = upload_path(document_id, filename)
+        page_count = self._parser.page_count(path)
+        chunks: list[ParsedChunk] = []
+        # Docling keeps everything of one call in RAM, so a long book is parsed in batches
+        # and each batch is freed before the next one starts.
+        for first_page in range(1, page_count + 1, settings.DOCLING_BATCH_PAGES):
+            document = self._parser.parse(
+                path, first_page, min(first_page + settings.DOCLING_BATCH_PAGES - 1, page_count)
+            )
+            chunks += self._chunker.chunk(
+                document,
+                assets_dir(document_id),
+                first_ordinal=len(chunks),
+                inherited_heading_path=chunks[-1].heading_path if chunks else "",
+            )
+        return ParsedDocument(page_count=page_count, chunks=chunks)
 
     @staticmethod
     async def _store(

@@ -39,16 +39,32 @@ class DocumentChunker:
             serializer_provider=MarkdownTableSerializerProvider(),
         )
 
-    def chunk(self, document: DoclingDocument, assets_dir: Path) -> list[ParsedChunk]:
-        """Return the document's chunks in reading order; figure images go to `assets_dir`."""
+    def chunk(
+        self,
+        document: DoclingDocument,
+        assets_dir: Path,
+        first_ordinal: int = 0,
+        inherited_heading_path: str = "",
+    ) -> list[ParsedChunk]:
+        """Return the document's chunks in reading order; figure images go to `assets_dir`.
+
+        For a document that is one batch of pages of a longer file, `first_ordinal` continues
+        the numbering of the previous batch, and `inherited_heading_path` is the section the
+        previous batch ended in: chunks before this batch's first heading belong to it.
+        """
         pictures = self._pictures_by_ref(document)
+        inherited = (
+            inherited_heading_path.split(HEADING_SEPARATOR) if inherited_heading_path else []
+        )
         chunks: list[ParsedChunk] = []
         for chunk in self._chunker.chunk(dl_doc=document):
             if not chunk.text.strip():
                 continue
             # The chunker is typed as yielding BaseChunk; DocChunk carries items and headings.
             doc_chunk = DocChunk.model_validate(chunk)
-            ordinal = len(chunks)
+            if not doc_chunk.meta.headings and inherited:
+                doc_chunk.meta.headings = inherited
+            ordinal = first_ordinal + len(chunks)
             picture = self._find_picture(doc_chunk.meta.doc_items, pictures)
             asset_path = None
             if picture is not None:

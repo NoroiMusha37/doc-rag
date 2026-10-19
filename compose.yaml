@@ -17,6 +17,7 @@ services:
 
   api:
     build: .
+    restart: unless-stopped
     env_file: .env
     environment:
       # Inside the compose network the database host is the service name.

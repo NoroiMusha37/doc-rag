@@ -112,6 +112,29 @@ def test_embed_text_is_prefixed_with_the_heading(chunks: list[ParsedChunk]) -> N
         assert chunk.embed_text == f"{chunk.heading_path}\n{chunk.text}"
 
 
+def test_a_later_batch_continues_numbering_and_inherits_the_open_section(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "STORAGE_DIR", str(tmp_path))
+    monkeypatch.setattr(
+        chunker_module.HuggingFaceTokenizer, "from_pretrained", lambda **kwargs: WordTokenizer()
+    )
+    # A batch that starts mid-section: text first, its own heading only afterwards.
+    doc = DoclingDocument(name="batch")
+    doc.add_text(DocItemLabel.TEXT, "The section goes on.", prov=_prov(11))
+    doc.add_heading("Greeks", prov=_prov(12))
+    doc.add_text(DocItemLabel.TEXT, "Delta measures sensitivity.", prov=_prov(12))
+
+    chunks = DocumentChunker().chunk(
+        doc, tmp_path / "assets" / "doc", first_ordinal=5, inherited_heading_path="Part > Options"
+    )
+
+    assert [chunk.ordinal for chunk in chunks] == [5, 6]
+    assert [chunk.heading_path for chunk in chunks] == ["Part > Options", "Greeks"]
+    assert chunks[0].embed_text == "Part\nOptions\nThe section goes on."
+    assert chunks[0].page_start == 11
+
+
 def test_picture_is_saved_even_when_merged_into_a_table_chunk(
     chunks: list[ParsedChunk], tmp_path: Path
 ) -> None:

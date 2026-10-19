@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from src.doc_rag.config import settings
 from src.doc_rag.db.models import ChunkKind, DocumentStatus
 from src.doc_rag.db.repository import DBRepository
 from src.doc_rag.ingestion.exceptions import ParsingError
@@ -45,22 +46,38 @@ class FakeDB:
 
 
 class FakeParser:
-    def __init__(self, error: Exception | None = None) -> None:
+    def __init__(self, error: Exception | None = None, pages: int = 2) -> None:
         self.error = error
+        self.pages = pages
         self.calls = 0
+        self.ranges: list[tuple[int, int]] = []
 
-    def parse(self, path: Path) -> SimpleNamespace:
+    def page_count(self, path: Path) -> int:
+        return self.pages
+
+    def parse(self, path: Path, first_page: int, last_page: int) -> SimpleNamespace:
         self.calls += 1
         if self.error is not None:
             raise self.error
-        return SimpleNamespace(pages={1: None, 2: None})
+        self.ranges.append((first_page, last_page))
+        return SimpleNamespace()
 
 
 class FakeChunker:
+    """Yields `count` chunks per call and records how each call continued the previous one."""
+
     def __init__(self, count: int = 2) -> None:
         self.count = count
+        self.calls: list[tuple[int, str]] = []
 
-    def chunk(self, document: object, assets_dir: Path) -> list[ParsedChunk]:
+    def chunk(
+        self,
+        document: object,
+        assets_dir: Path,
+        first_ordinal: int = 0,
+        inherited_heading_path: str = "",
+    ) -> list[ParsedChunk]:
+        self.calls.append((first_ordinal, inherited_heading_path))
         return [
             ParsedChunk(
                 ordinal=ordinal,
@@ -71,7 +88,7 @@ class FakeChunker:
                 page_start=1,
                 page_end=1,
             )
-            for ordinal in range(self.count)
+            for ordinal in range(first_ordinal, first_ordinal + self.count)
         ]
 
 
@@ -108,6 +125,21 @@ async def test_ingest_stores_embedded_chunks_and_marks_the_document_ready(use_db
     assert db.documents.document.page_count == 2
     assert [row["text"] for row in db.chunks.rows] == ["chunk 0", "chunk 1"]
     assert [row["embedding"] for row in db.chunks.rows] == [[0.0], [1.0]]
+
+
+async def test_ingest_parses_a_long_file_in_batches_and_continues_numbering(
+    use_db, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "DOCLING_BATCH_PAGES", 10)
+    db = use_db(FakeDB())
+    parser, chunker = FakeParser(pages=25), FakeChunker()
+
+    await IngestionPipeline(parser, chunker, FakeEmbedder()).ingest(DOCUMENT_ID)
+
+    assert parser.ranges == [(1, 10), (11, 20), (21, 25)]
+    assert chunker.calls == [(0, ""), (2, "Heading"), (4, "Heading")]
+    assert db.documents.document.page_count == 25
+    assert [row["ordinal"] for row in db.chunks.rows] == [0, 1, 2, 3, 4, 5]
 
 
 @pytest.mark.parametrize(

@@ -2,6 +2,7 @@ import logging
 import time
 from pathlib import Path
 
+import pypdfium2
 import torch
 from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
 from docling.datamodel.base_models import ConversionStatus, InputFormat
@@ -23,7 +24,7 @@ class DocumentParser:
         options.do_table_structure = True
         options.do_formula_enrichment = settings.DOCLING_FORMULA_ENRICHMENT
         options.generate_picture_images = True
-        options.images_scale = 2.0
+        options.images_scale = settings.DOCLING_IMAGES_SCALE
         options.document_timeout = settings.DOCLING_TIMEOUT_SECONDS
         options.accelerator_options = AcceleratorOptions(device=AcceleratorDevice.AUTO)
 
@@ -42,13 +43,29 @@ class DocumentParser:
             f"cuda: {torch.cuda.is_available()})"
         )
 
-    def parse(self, path: Path) -> DoclingDocument:
+    @staticmethod
+    def page_count(path: Path) -> int:
+        if not path.is_file():
+            raise ParsingError(f"File not found: {path.name}")
+        try:
+            with pypdfium2.PdfDocument(path) as pdf:
+                return len(pdf)
+        except pypdfium2.PdfiumError as exc:
+            raise ParsingError(f"Could not read {path.name}: {exc}") from exc
+
+    def parse(self, path: Path, first_page: int, last_page: int) -> DoclingDocument:
+        """Convert pages `first_page` to `last_page` (1-based, inclusive).
+
+        Page numbers in the result are those of the whole file, not of the range.
+        """
         if not path.is_file():
             raise ParsingError(f"File not found: {path.name}")
 
         started = time.perf_counter()
         try:
-            result = self._converter.convert(path, raises_on_error=False)
+            result = self._converter.convert(
+                path, raises_on_error=False, page_range=(first_page, last_page)
+            )
         except Exception as exc:
             raise ParsingError(f"Could not read {path.name}: {exc}") from exc
         finally:
@@ -64,7 +81,7 @@ class DocumentParser:
             raise ParsingError(f"Could not convert {path.name} ({result.status.value}): {errors}")
 
         logger.info(
-            f"Parsed {path.name}: {len(result.document.pages)} pages "
+            f"Parsed {path.name} pages {first_page}-{last_page} "
             f"in {time.perf_counter() - started:.1f}s"
         )
         return result.document

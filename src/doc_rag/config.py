@@ -54,8 +54,13 @@ class Settings(BaseSettings):
 
     # LaTeX for formulas; slow and VRAM-heavy, turn off for text-only documents.
     DOCLING_FORMULA_ENRICHMENT: bool = True
-    # A document that takes longer is cut off and ingested with the pages parsed so far.
+    # A batch that takes longer is cut off and ingested with the pages parsed so far.
     DOCLING_TIMEOUT_SECONDS: float = 1800
+    # Pages parsed per Docling call. Docling keeps a whole call in RAM, so a long book is
+    # parsed in batches; larger batches keep more section context but need more memory.
+    DOCLING_BATCH_PAGES: int = 25
+    # Resolution of saved figure images relative to the PDF (1.0 = 72 dpi); lower uses less RAM.
+    DOCLING_IMAGES_SCALE: float = 1.5
 
 
 settings = Settings()
